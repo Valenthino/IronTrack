@@ -34,7 +34,8 @@
     "typecheck": "tsc --noEmit",
     "build:web": "expo export --platform web",
     "preview:web": "serve dist -l 8080",
-    "test": "tsc -p tsconfig.test.json && node --test tests/*.test.mjs"
+    "test": "tsc -p tsconfig.test.json && node --test tests/*.test.mjs",
+    "smoke:deployed": "node scripts/smoke-deployed.mjs"
   },
   "private": true
 }

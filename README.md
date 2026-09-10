@@ -89,3 +89,7 @@ Successful lifts add 2.5 kg / 5 lb (including deadlift). A failed lift holds its
 `scripts/smoke-web.mjs` reproduces the browser flow with no extra npm dependencies. Serve `dist` on `127.0.0.1:8084`, start Chromium with a **disposable profile** and `--remote-debugging-port=9334`, then run `node scripts/smoke-web.mjs`. It clears local storage for that test origin and writes a screenshot to `/tmp/irontrack-round4-mobile.png`. Use an unconfigured build. Navigation link styles are flattened before passing through Router’s `asChild` wrapper to keep DOM anchor styles valid.
 
 Real magic-link delivery, configured Supabase callbacks, and native device behavior remain unverified. No deployment, external service changes, or database writes were performed.
+
+## Deployment (Round 5)
+
+[Coolify deployment handoff](docs/deployment.md) covers the existing public GitHub repository, Dockerfile build settings, public Supabase build variables, health checks, and operator verification. The multi-stage image serves the Expo export with non-root Nginx on port 8080. `/health.json` is a static liveness artifact. Run `npm run smoke:deployed -- https://your-deployed-host` for a read-only HTTP smoke check. Provisioning and deployment are separate infrastructure tasks.

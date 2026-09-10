@@ -1,0 +1,21 @@
+# Allow only inputs needed for the static export and serving configuration.
+**
+!Dockerfile
+!package.json
+!package-lock.json
+!app.json
+!tsconfig.json
+!expo-env.d.ts
+!app/
+!app/**
+!src/
+!src/**
+!public/
+!public/**
+!deploy/
+!deploy/nginx.conf
+# Never send local configuration, credentials, or key material to the builder.
+**/.env*
+**/*.pem
+**/*.key
+**/.npmrc
