@@ -22,7 +22,7 @@ The preview works without configuration. To configure a backend, copy `.env.exam
 
 Restart Expo after changes. Expo embeds these values in the client bundle; never use a service-role key or other secret. Enable row-level security and appropriate policies before adding data access. A physical phone needs a URL reachable from the phone; localhost points to the phone itself.
 
-`src/lib/supabase.ts` exposes a lazy singleton through `getSupabase()`, returning `null` when configuration is absent. Native session storage uses AsyncStorage; web uses Supabase's default browser storage. The auth screen uses this client to restore sessions, request email magic links, handle code/token callbacks, and sign out locally. “Configured” means variables are present, not that a connection was verified. The client is typed with the Round 2 database model. In a configured installation, allow the web `/auth` URL and native `irontrack://auth` callback in Supabase Auth redirect settings. Open links on the same device/browser. No external service was contacted during this round; email delivery and native callback behavior still require verification in a configured test environment.
+`src/lib/supabase.ts` exposes a lazy singleton through `getSupabase()`, returning `null` when configuration is absent. Native session storage uses AsyncStorage; web uses Supabase's default browser storage. The auth screen uses this client to restore sessions, sign up and sign in with email and password, and sign out locally. “Configured” means variables are present, not that a connection was verified. The client is typed with the Round 2 database model. No external service was contacted during this round; email/password sign-in still requires verification in a configured test environment.
 
 The SQL migration, reference workouts, data contract, isolated validation, and dedicated-project application instructions are in [supabase/README.md](supabase/README.md). No remote migration or deployment has been performed.
 
@@ -43,7 +43,7 @@ The production static web export is written to `dist/`; preview serves it locall
 - `app/_layout.tsx`: Router stack, safe areas, and status bar.
 - `app/index.tsx`: today’s workout, A/B previews, per-set logging, warm-ups, completion, and rest timer.
 - `app/onboarding.tsx`: experience, goal, units, and starting weights.
-- `app/auth.tsx`: optional email magic-link sign-in and callback handling.
+- `app/auth.tsx`: optional email + password sign-in and sign-up.
 - `app/history.tsx`, `app/settings.tsx`: history, current targets, units, and account navigation.
 - `src/state/store.tsx`: versioned local persistence with guarded writes.
 - `src/training/flows.ts`: pure setup, logging, completion, unit conversion, and restore validation.
@@ -88,7 +88,7 @@ Successful lifts add 2.5 kg / 5 lb (including deadlift). A failed lift holds its
 
 `scripts/smoke-web.mjs` reproduces the browser flow with no extra npm dependencies. Serve `dist` on `127.0.0.1:8084`, start Chromium with a **disposable profile** and `--remote-debugging-port=9334`, then run `node scripts/smoke-web.mjs`. It clears local storage for that test origin and writes a screenshot to `/tmp/irontrack-round4-mobile.png`. Use an unconfigured build. Navigation link styles are flattened before passing through Router’s `asChild` wrapper to keep DOM anchor styles valid.
 
-Real magic-link delivery, configured Supabase callbacks, and native device behavior remain unverified. No deployment, external service changes, or database writes were performed.
+Real email/password sign-in against a configured Supabase project, and native device behavior, remain unverified. No deployment, external service changes, or database writes were performed.
 
 ## Deployment (Round 5)
 

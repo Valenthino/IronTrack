@@ -14,6 +14,6 @@ export default function Settings() {
       {data.profile && <View style={s.card}><Text style={s.heading}>Your plan</Text><Text style={s.text}>Experience: {data.profile.experience}</Text><Text style={s.text}>Goal: {data.profile.goal}</Text><Text style={s.muted}>Classic A/B · 5 × 5 · Deadlift 1 × 5</Text></View>}
       {!!error && <Message>{error}</Message>}
     </>}
-    <View style={s.card}><Text style={s.heading}>Account</Text><Text style={s.muted}>Email magic-link sign-in. Training is stored on this device only, including when signed in. Cloud sync is not available yet.</Text><Button title="Manage sign-in" onPress={() => router.push('/auth')} /></View>
+    <View style={s.card}><Text style={s.heading}>Account</Text><Text style={s.muted}>Email and password sign-in. Training is stored on this device only, including when signed in. Cloud sync is not available yet.</Text><Button title="Manage sign-in" onPress={() => router.push('/auth')} /></View>
   </Screen>;
 }
