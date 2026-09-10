@@ -30,6 +30,7 @@ The SQL migration, reference workouts, data contract, isolated validation, and d
 
 ```sh
 npm run typecheck
+npm test
 npx expo install --check
 npm run build:web
 npm run preview:web
@@ -51,3 +52,15 @@ Setup follows the official [Expo Router installation guide](https://docs.expo.de
 ## Round 1 verification
 
 TypeScript checking, Expo dependency compatibility, and static web export pass on Node 22.23.2. Native simulator/device behavior has not been verified. The initial dependency audit reports 13 moderate findings in Expo's transitive dependency tree (including Router URL decoding and build tooling), with no high or critical findings. Review upstream fixes before deployment; no forced major-version upgrades were applied.
+
+## Training engine (Round 3)
+
+`src/training/engine.ts` is a standalone TypeScript module with no React or database imports. `createTrainingState` starts on A with nominal 20 kg / 45 lb bars. `workoutDefinition` returns classic A/B prescriptions, including deadlift 1×5. Call `completeSession` once per finalized session with every prescribed working set; failed attempts may have zero reps. Incomplete logs are rejected. Persistence and duplicate-session prevention belong to the caller.
+
+Successful lifts add 2.5 kg / 5 lb (including deadlift). A failed lift holds its weight; the third consecutive failure reduces it by 10%, rounded to the nearest standard increment and bounded by the nominal bar (or an existing lighter weight). Success and deload reset stalls. Squat progress is shared across A/B; sessions alternate even if a lift stalls. Warm-ups are excluded from success checks.
+
+`warmupSets` returns two empty-bar sets plus ascending 40% ×5, 60% ×3, and 80% ×2 sets, rounded down to loading increments; duplicate intermediate loads and loads at or above working weight are omitted. An empty-bar working weight needs no separate warm-ups. `restSeconds` defaults to 120 seconds, or 180 after a difficult/failed set.
+
+`calculatePlates` assumes unlimited matched pairs of standard kg or lb plates and returns counts **per side**, actual loaded weight, and the remaining unloadable weight. Custom bar weights are supported. Units are nominal and never automatically converted. Finite, nonnegative weights are required; targets below the bar are rejected.
+
+`npm test` compiles the isolated engine with the installed TypeScript compiler and runs Node's built-in unit tests without extra dependencies or network access. The UI remains a preview; wiring the engine to logging and persistence is future work.

@@ -6,3 +6,5 @@ web-build/
 !.env.example
 *.tsbuildinfo
 .DS_Store
+
+.test-build/
