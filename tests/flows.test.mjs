@@ -1,7 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { changeUnit, draftComplete, finishWorkout, initialData, lifts, remainingSeconds, restoreData, setReps, setupTraining, startDraft, validEmail } from '../.test-build/flows.js';
+import { changeUnit, draftComplete, finishWorkout, initialData as defaultData, lifts, remainingSeconds, restoreData, setReps, setupTraining, startDraft, validEmail } from '../.test-build/flows.js';
 import { workoutDefinition } from '../.test-build/engine.js';
+function initialData() { return { ...defaultData(), training: setupTraining('kg', {}) }; }
+test('new installations default to pounds without reinterpreting existing kg data', () => {
+  assert.equal(defaultData().training.unit, 'lb');
+  assert.equal(defaultData().training.lifts.squat.weight, 45);
+  assert.equal(restoreData(JSON.stringify(initialData())).training.unit, 'kg');
+});
 function logged(data, missed = false) {
   let draft = startDraft(data.training, 'session-1');
   for (const { lift, sets } of workoutDefinition(data.training.nextWorkout)) for (let i = 0; i < sets; i++) draft = setReps(draft, lift, i, missed && lift === 'squat' ? 4 : 5);
@@ -88,4 +94,13 @@ test('rest deadlines round-trip and inconsistent persisted sessions are rejected
   assert.throws(() => restoreData(JSON.stringify(invalid)));
   const done = finishWorkout(data, '2026-09-09');
   assert.throws(() => restoreData(JSON.stringify({ ...done, history: [done.history[0], done.history[0]] })));
+});
+
+test('setup and restore reject unloadable and unsafe targets', () => {
+  for (const weight of [46, 1e100]) {
+    assert.throws(() => setupTraining('lb', { squat: String(weight) }));
+    const data = defaultData();
+    data.training.lifts.squat.weight = weight;
+    assert.throws(() => restoreData(JSON.stringify(data)));
+  }
 });

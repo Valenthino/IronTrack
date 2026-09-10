@@ -27,13 +27,14 @@ export default function Auth() {
   }, []);
   useEffect(() => {
     if (!url || handled.current === url) return;
-    const parsed = new URL(url);
+    let parsed: URL;
+    try { parsed = new URL(url); } catch { setMessage('This sign-in link is invalid. Request a new one.'); return; }
     const params = new URLSearchParams(parsed.hash.slice(1));
     const code = parsed.searchParams.get('code');
     const access = params.get('access_token');
     const refresh = params.get('refresh_token');
     const failed = params.has('error') || parsed.searchParams.has('error');
-    if (!code && !access && !failed) return;
+    if (!code && !access && !refresh && !failed) return;
     handled.current = url;
     // Remove callback credentials from the address bar; never display or log them.
     if (Platform.OS === 'web' && typeof window !== 'undefined') window.history.replaceState({}, '', '/auth');
