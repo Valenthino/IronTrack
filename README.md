@@ -1,6 +1,6 @@
 # IronTrack
 
-Mobile-first, self-hostable 5×5 strength tracker inspired by StrongLifts. Round 1 establishes an Expo TypeScript app with Expo Router, React Native Web, and a red/dark/white UI.
+Mobile-first, self-hostable 5×5 strength tracker inspired by StrongLifts. Expo Router screens provide local workout tracking with a bold red/dark/white UI.
 
 ## Run locally
 
@@ -22,7 +22,7 @@ The preview works without configuration. To configure a backend, copy `.env.exam
 
 Restart Expo after changes. Expo embeds these values in the client bundle; never use a service-role key or other secret. Enable row-level security and appropriate policies before adding data access. A physical phone needs a URL reachable from the phone; localhost points to the phone itself.
 
-`src/lib/supabase.ts` exposes a lazy singleton through `getSupabase()`, returning `null` when configuration is absent. Native session storage uses AsyncStorage; web uses Supabase's default browser storage. No backend requests are made by the shell. “Configured” means variables are present, not that a connection was verified. The client is typed with the Round 2 database model. Auth flows, lifecycle-based token refresh, and workout persistence UI are future work.
+`src/lib/supabase.ts` exposes a lazy singleton through `getSupabase()`, returning `null` when configuration is absent. Native session storage uses AsyncStorage; web uses Supabase's default browser storage. The auth screen uses this client to restore sessions, request email magic links, handle code/token callbacks, and sign out locally. “Configured” means variables are present, not that a connection was verified. The client is typed with the Round 2 database model. In a configured installation, allow the web `/auth` URL and native `irontrack://auth` callback in Supabase Auth redirect settings. Open links on the same device/browser. No external service was contacted during this round; email delivery and native callback behavior still require verification in a configured test environment.
 
 The SQL migration, reference workouts, data contract, isolated validation, and dedicated-project application instructions are in [supabase/README.md](supabase/README.md). No remote migration or deployment has been performed.
 
@@ -41,11 +41,25 @@ The production static web export is written to `dist/`; preview serves it locall
 ## Structure and scope
 
 - `app/_layout.tsx`: Router stack, safe areas, and status bar.
-- `app/index.tsx`: responsive workout A/B preview with accessible selection controls.
+- `app/index.tsx`: today’s workout, A/B previews, per-set logging, warm-ups, completion, and rest timer.
+- `app/onboarding.tsx`: experience, goal, units, and starting weights.
+- `app/auth.tsx`: optional email magic-link sign-in and callback handling.
+- `app/history.tsx`, `app/settings.tsx`: history, current targets, units, and account navigation.
+- `src/state/store.tsx`: versioned local persistence with guarded writes.
+- `src/training/flows.ts`: pure setup, logging, completion, unit conversion, and restore validation.
+- `src/ui/common.tsx`: shared mobile layout and accessible controls.
 - `src/theme/index.ts`: shared color and sizing tokens.
 - `src/lib/supabase.ts`: optional environment-based client configuration.
 
-The shell previews exercises only. It does not log sets, calculate progression, authenticate users, or save data.
+Training works without an account. Onboarding records experience and strength/size/confidence goals, with the same classic A/B prescription for every goal. Blank starting weights default to 20 kg / 45 lb per lift. Custom weights must be at least the nominal bar and use 2.5 kg / 5 lb increments.
+
+Start the scheduled workout, tap each set box, and choose 0–5 completed reps. Zero is an attempted failed set; a blank set is unlogged. Finish is enabled only after every working set is recorded. Completion saves an immutable session snapshot and applies the pure engine once. Successful lifts progress, failed lifts hold/deload, and A/B alternates. Warm-ups are shown separately and do not affect progression.
+
+The rest timer starts at 2 minutes for a five-rep set and 3 minutes for fewer reps; manual 2/3-minute and skip controls are available. Its timestamp survives navigation and reloads, so background elapsed time is counted without notifications.
+
+Setup, active sets, timer deadline, and history are stored using AsyncStorage under `irontrack.training.v1`. Writes finish before UI state advances, and duplicate completion is guarded. Failed storage reads leave existing data untouched and block writes; reload to retry. This MVP assumes one active app tab. Training is device-local and shared by people using the same browser/device, even when signed in. Signing out preserves local training; clearing browser/app storage removes it. Cloud workout sync is not implemented.
+
+Settings converts current targets to the nearest loadable weight in the selected unit while retaining stalls; repeated conversions can round weights. Unit changes are disabled during active workouts. Historical weights retain their original units. No reminders, bodyweight, notes, or advanced analytics are included.
 
 Setup follows the official [Expo Router installation guide](https://docs.expo.dev/router/installation/) and [Supabase React Native guide](https://supabase.com/docs/guides/auth/quickstarts/react-native).
 
@@ -61,6 +75,17 @@ Successful lifts add 2.5 kg / 5 lb (including deadlift). A failed lift holds its
 
 `warmupSets` returns two empty-bar sets plus ascending 40% ×5, 60% ×3, and 80% ×2 sets, rounded down to loading increments; duplicate intermediate loads and loads at or above working weight are omitted. An empty-bar working weight needs no separate warm-ups. `restSeconds` defaults to 120 seconds, or 180 after a difficult/failed set.
 
-`calculatePlates` assumes unlimited matched pairs of standard kg or lb plates and returns counts **per side**, actual loaded weight, and the remaining unloadable weight. Custom bar weights are supported. Units are nominal and never automatically converted. Finite, nonnegative weights are required; targets below the bar are rejected.
+`calculatePlates` assumes unlimited matched pairs of standard kg or lb plates and returns counts **per side**, actual loaded weight, and the remaining unloadable weight. Custom bar weights are supported. The engine’s units are nominal; the UI flow explicitly converts current targets when the user changes units. Finite, nonnegative weights are required; targets below the bar are rejected.
 
-`npm test` compiles the isolated engine with the installed TypeScript compiler and runs Node's built-in unit tests without extra dependencies or network access. The UI remains a preview; wiring the engine to logging and persistence is future work.
+`npm test` compiles the isolated engine with the installed TypeScript compiler and runs Node's built-in unit tests without extra dependencies or network access. Flow tests also cover onboarding validation, set edits, completion, duplicate prevention, unit changes, persisted data validation, timer arithmetic, and email input validation.
+
+## Round 4 verification
+
+- `npm test`: 21 engine/flow tests pass.
+- `npm run typecheck`: passes.
+- `npm run build:web`: exports all seven routes, including auth, onboarding, history, and settings.
+- Local headless Chromium at 390 × 844: onboarding, unconfigured auth, A/B preview, 15-set workout A completion, failed-lift hold, active draft/timer reload, history, and unit conversion pass without runtime exceptions or horizontal overflow.
+
+`scripts/smoke-web.mjs` reproduces the browser flow with no extra npm dependencies. Serve `dist` on `127.0.0.1:8084`, start Chromium with a **disposable profile** and `--remote-debugging-port=9334`, then run `node scripts/smoke-web.mjs`. It clears local storage for that test origin and writes a screenshot to `/tmp/irontrack-round4-mobile.png`. Use an unconfigured build. Navigation link styles are flattened before passing through Router’s `asChild` wrapper to keep DOM anchor styles valid.
+
+Real magic-link delivery, configured Supabase callbacks, and native device behavior remain unverified. No deployment, external service changes, or database writes were performed.
