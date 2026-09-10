@@ -59,9 +59,12 @@ try {
   await click('Confidence');
   await click('Continue');
   await waitFor(contains('STEP 3 OF 3'));
+  assert.ok(await evaluate(contains('empty 45 lb bar')));
+  await click('kg');
   await click('Build my plan');
   await waitFor(contains('Start workout A'));
   assert.equal((await storage()).profile.goal, 'confidence');
+  assert.ok(await evaluate(contains('Plates per side: None')));
   await click('Workout B');
   await waitFor(contains('Preview only.'));
   await click('Start workout A');
@@ -102,8 +105,31 @@ try {
   await click('Today', 'link');
   await waitFor(contains('Start workout B'));
   assert.equal(await evaluate('document.documentElement.scrollWidth <= window.innerWidth'), true);
+  await click('Start workout B');
+  await waitFor(contains('Let’s lift. Workout B.'));
+  for (let i = 0; i < 11; i++) {
+    await waitFor(`!!(${unfinished}) && (${unfinished}).getAttribute('aria-disabled') !== 'true'`);
+    await evaluate(`(${unfinished}).click()`);
+    await click('5 reps');
+    await waitFor(`!${contains('reps completed')}`);
+  }
+  await click('Finish & save workout');
+  await waitFor(contains('Workout saved.'));
+  assert.equal((await storage()).history.length, 2);
+  assert.equal((await storage()).training.nextWorkout, 'A');
+  assert.equal((await storage()).training.lifts.deadlift.weight, 50);
+  assert.ok(await evaluate(contains('1 × 2.5 lb')));
+  for (const width of [320, 1280]) {
+    await call('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 600 });
+    assert.equal(await evaluate('document.documentElement.scrollWidth <= window.innerWidth'), true);
+  }
+  await call('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
   const screenshot = await call('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
   await writeFile('/tmp/irontrack-round4-mobile.png', Buffer.from(screenshot.data, 'base64'));
+  await call('Page.navigate', { url: 'http://127.0.0.1:8084/auth#refresh_token=synthetic-test-value' });
+  await waitFor(contains('This sign-in link is invalid or expired.'));
+  assert.equal(await evaluate('location.hash'), '');
+  assert.equal((await storage()).history.length, 2);
   assert.deepEqual(errors, []);
-  console.log('PASS: mobile onboarding, unconfigured auth, A/B preview, 15-set completion, failed-lift hold, rest/draft reload, history, unit conversion; no runtime exceptions.');
+  console.log('PASS: mobile onboarding, unconfigured auth, A/B preview, A and B completion, plate guidance, 320/390/1280px layouts, failed-lift hold, rest/draft reload, history, unit conversion; no runtime exceptions.');
 } finally { socket.close(); }

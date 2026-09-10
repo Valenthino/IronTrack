@@ -51,7 +51,7 @@ The production static web export is written to `dist/`; preview serves it locall
 - `src/theme/index.ts`: shared color and sizing tokens.
 - `src/lib/supabase.ts`: optional environment-based client configuration.
 
-Training works without an account. Onboarding records experience and strength/size/confidence goals, with the same classic A/B prescription for every goal. Blank starting weights default to 20 kg / 45 lb per lift. Custom weights must be at least the nominal bar and use 2.5 kg / 5 lb increments.
+Training works without an account. Onboarding records experience and strength/size/confidence goals, with the same classic A/B prescription for every goal. New installations default to lb. Blank starting weights default to 20 kg / 45 lb per lift. Custom weights must be at least the nominal bar and use 2.5 kg / 5 lb increments.
 
 Start the scheduled workout, tap each set box, and choose 0–5 completed reps. Zero is an attempted failed set; a blank set is unlogged. Finish is enabled only after every working set is recorded. Completion saves an immutable session snapshot and applies the pure engine once. Successful lifts progress, failed lifts hold/deload, and A/B alternates. Warm-ups are shown separately and do not affect progression.
 
@@ -93,3 +93,7 @@ Real magic-link delivery, configured Supabase callbacks, and native device behav
 ## Deployment (Round 5)
 
 [Coolify deployment handoff](docs/deployment.md) covers the existing public GitHub repository, Dockerfile build settings, public Supabase build variables, health checks, and operator verification. The multi-stage image serves the Expo export with non-root Nginx on port 8080. `/health.json` is a static liveness artifact. Run `npm run smoke:deployed -- https://your-deployed-host` for a read-only HTTP smoke check. Provisioning and deployment are separate infrastructure tasks.
+
+## Round 6 review
+
+See [review findings and verification](docs/review-round6.md). Review fixes are local commits; the deployed HTTP smoke checks the existing deployment, not these unshipped changes.

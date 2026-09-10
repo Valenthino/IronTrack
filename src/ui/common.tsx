@@ -6,7 +6,7 @@ import { theme } from '../theme';
 export function Button({ title, onPress, disabled, secondary = false }: { title: string; onPress: () => void; disabled?: boolean; secondary?: boolean }) {
   return <Pressable accessibilityRole="button" accessibilityState={{ disabled: !!disabled }} disabled={disabled} onPress={onPress} style={({ pressed }) => [s.button, secondary && s.secondary, (pressed || disabled) && { opacity: 0.5 }]}><Text style={s.buttonText}>{title}</Text></Pressable>;
 }
-export function Field({ label, ...props }: TextInputProps & { label: string }) { return <View style={{ gap: 8 }}><Text style={s.text}>{label}</Text><TextInput accessibilityLabel={label} placeholderTextColor="#777D86" {...props} style={[s.input, props.style]} /></View>; }
+export function Field({ label, ...props }: TextInputProps & { label: string }) { return <View style={{ gap: 8 }}><Text style={s.text}>{label}</Text><TextInput accessibilityLabel={label} placeholderTextColor="#666C77" {...props} style={[s.input, props.style]} /></View>; }
 export function Message({ children }: { children: ReactNode }) { return <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={s.message}>{children}</Text>; }
 export function Screen({ title, eyebrow, children }: { title: string; eyebrow?: string; children: ReactNode }) {
   const pathname = usePathname();

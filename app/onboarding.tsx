@@ -12,7 +12,7 @@ export default function Onboarding() {
   const [step, setStep] = useState(0);
   const [experience, setExperience] = useState<Profile['experience']>('new');
   const [goal, setGoal] = useState<Profile['goal']>('strength');
-  const [unit, setUnit] = useState<Unit>('kg');
+  const [unit, setUnit] = useState<Unit>(data.training.unit);
   const [values, setValues] = useState<Partial<Record<(typeof lifts)[number], string>>>({});
   const [error, setError] = useState('');
   if (!ready) return <Screen title="Your starting point"><Message>{storageError || 'Loading training…'}</Message></Screen>;
