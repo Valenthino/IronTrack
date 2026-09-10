@@ -4,7 +4,8 @@ import { AppState, Pressable, Text, View } from 'react-native';
 import { useTraining } from '../src/state/store';
 import { draftComplete, finishWorkout, liftNames, remainingSeconds, setReps, startDraft } from '../src/training/flows';
 import { calculatePlates, restSeconds, warmupSets, workoutDefinition, type Lift, type Workout } from '../src/training/engine';
-import { Button, Message, Screen, s } from '../src/ui/common';
+import { theme } from '../src/theme';
+import { Button, Loading, Message, Screen, s } from '../src/ui/common';
 
 export default function Today() {
   const router = useRouter();
@@ -40,10 +41,10 @@ export default function Today() {
     });
     if (success) { setSelected(null); setNow(Date.now()); }
   }
-  if (!ready) return <Screen title="Today’s workout"><Message>{storageError || 'Loading training…'}</Message></Screen>;
+  if (!ready) return <Screen title="Today’s workout">{storageError ? <Message>{storageError}</Message> : <Loading>Loading training…</Loading>}</Screen>;
   if (!data.profile) return <Screen title="One lift at a time." eyebrow="SIMPLE WORKOUTS. STEADY PROGRESS."><Text style={s.text}>Three lifts. Three workouts per week, with a rest day between sessions. Alternate A and B each time.</Text><View style={s.card}><Text style={s.heading}>Your first 5 × 5 starts here.</Text><Text style={s.muted}>Set your starting weights, log each set, and let your plan progress with you.</Text><Button title="Set up my training" onPress={() => router.push('/onboarding')} /><Button title="Sign in with email" secondary onPress={() => router.push('/auth')} /></View><Text style={s.muted}>No account needed to train. Your workouts are saved on this device.</Text></Screen>;
   return <Screen title={draft ? `Let’s lift. Workout ${workout}.` : 'Today’s workout'} eyebrow={`${data.profile.goal.toUpperCase()} · ${draft ? 'IN PROGRESS' : `NEXT UP: ${training.nextWorkout}`}`}>
-    {saved && <Message>Workout saved. Your next targets are ready.</Message>}
+    {saved && <Message tone="success">Workout saved. Your next targets are ready.</Message>}
     {!draft && <View style={s.row}>{(['A', 'B'] as const).map(value => <Button key={value} title={`Workout ${value}${workout === value ? ' ✓' : ''}`} secondary={workout !== value} onPress={() => setPreview(value)} />)}</View>}
     {!draft && workout !== training.nextWorkout && <Text style={s.muted}>Preview only. Your next scheduled workout is {training.nextWorkout}.</Text>}
     {draft && <View style={s.card}><View style={s.row}><Text style={s.heading}>Rest timer</Text><Text accessibilityLabel={`${Math.floor(seconds / 60)} minutes ${seconds % 60} seconds remaining`} style={s.heading}>{Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')}</Text></View><Text accessibilityLiveRegion="polite" style={s.muted}>{deadline === null ? 'Starts when you log a set.' : seconds === 0 ? 'Rest complete. Ready for your next set.' : 'Take your time. Make the next set count.'}</Text><View style={s.row}><Button title="2 minutes" secondary disabled={saving} onPress={() => setRest(restSeconds())} /><Button title="3 minutes" secondary disabled={saving} onPress={() => setRest(restSeconds(true))} /><Button title="Skip rest" secondary disabled={saving} onPress={() => setRest(null)} /></View></View>}
@@ -56,7 +57,7 @@ export default function Today() {
         <Text style={s.muted}>Warm-up: {warmups.length ? warmups.map(set => `${set.weight} ${training.unit} × ${set.reps}`).join(' · ') : 'Empty-bar working weight; no separate warm-up sets.'}</Text>
         <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>{Array.from({ length: sets }, (_, i) => {
           const logged = draft?.reps[lift]?.[i];
-          return <Pressable key={i} disabled={!draft || saving} accessibilityRole="button" accessibilityLabel={`${liftNames[lift]}, set ${i + 1}, ${logged == null ? 'not logged' : `${logged} of 5 reps`}. Edit reps.`} accessibilityState={{ disabled: !draft || saving }} onPress={() => setSelected({ lift, index: i })} style={{ minWidth: 48, minHeight: 52, alignItems: 'center', justifyContent: 'center', borderRadius: 8, borderWidth: 1, borderColor: selected?.lift === lift && selected.index === i ? 'white' : '#666C77', backgroundColor: logged == null ? '#101113' : logged === 5 ? '#C91D2C' : '#FAFAFA' }}><Text style={{ color: logged != null && logged < 5 ? '#101113' : 'white', fontWeight: '800', fontSize: 20 }}>{logged == null ? '—' : logged}</Text><Text style={{ color: logged != null && logged < 5 ? '#303237' : logged === 5 ? 'white' : '#AAAEB7', fontSize: 10 }}>SET {i + 1}</Text></Pressable>;
+          return <Pressable key={i} disabled={!draft || saving} accessibilityRole="button" accessibilityLabel={`${liftNames[lift]}, set ${i + 1}, ${logged == null ? 'not logged' : `${logged} of 5 reps`}. Edit reps.`} accessibilityState={{ disabled: !draft || saving }} onPress={() => setSelected({ lift, index: i })} style={{ minWidth: 48, minHeight: 52, alignItems: 'center', justifyContent: 'center', borderRadius: 8, borderWidth: 1, borderColor: selected?.lift === lift && selected.index === i ? 'white' : theme.colors.borderMuted, backgroundColor: logged == null ? theme.colors.background : logged === 5 ? theme.colors.red : theme.colors.text }}><Text style={{ color: logged != null && logged < 5 ? theme.colors.background : 'white', fontWeight: '800', fontSize: 20 }}>{logged == null ? '—' : logged}</Text><Text style={{ color: logged != null && logged < 5 ? theme.colors.border : logged === 5 ? 'white' : theme.colors.muted, fontSize: 10 }}>SET {i + 1}</Text></Pressable>;
         })}</View>
         {selected?.lift === lift && draft && <View style={{ gap: 12 }}><Text style={s.text}>{liftNames[lift]} · set {selected.index + 1}: reps completed</Text><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{[0, 1, 2, 3, 4, 5].map(count => <Button key={count} title={`${count} reps`} disabled={saving} secondary={count !== 5} onPress={() => log(count)} />)}</View><Text style={s.muted}>0 means attempted with no completed reps. Fewer than 5 starts a 3-minute rest.</Text><Button title="Clear this set" secondary disabled={saving} onPress={() => log(null)} /><Button title="Close set editor" secondary onPress={() => setSelected(null)} /></View>}
       </View>;

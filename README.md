@@ -97,3 +97,15 @@ Real magic-link delivery, configured Supabase callbacks, and native device behav
 ## Round 6 review
 
 See [review findings and verification](docs/review-round6.md). Review fixes are local commits; the deployed HTTP smoke checks the existing deployment, not these unshipped changes.
+
+## Round 7 — final polish
+
+Visual consistency, accessibility, and state clarity pass. No new features were added.
+
+- **Single accent red.** The theme previously declared `#E32736` while buttons and completed set boxes used `#C91D2C`. All red accents now resolve to one token (`theme.colors.red`), and the set boxes, buttons, badge, and brand mark share it.
+- **Success vs error feedback.** `Message` now accepts a `tone` (`error` | `success`). "Workout saved", "You're signed in", "Signed out", and "Check your inbox" render in a distinct success color instead of the error red; genuine errors stay red.
+- **Loading is not an error.** A new `Loading` component renders muted, `progressbar`-labelled text. Every screen's `!ready` branch now shows a neutral loading state and only surfaces a red message when storage actually failed.
+- **Touch targets.** Interactive controls keep ≥ 48px height (nav 48, buttons 50, inputs 52, set boxes 52), meeting mobile accessibility guidance.
+- **Test gap closed.** Added engine coverage asserting invalid units and workouts are rejected consistently across `increment`, `barWeight`, `createTrainingState`, `calculatePlates`, and `workoutDefinition`.
+
+Verification: `npm test` (24 passing), `npm run typecheck`, and `EXPO_NO_DOTENV=1 npm run build:web` all pass. See the commit message for the deployed hash.

@@ -67,7 +67,7 @@ export default function Auth() {
   return <Screen title={signedIn ? 'You’re signed in.' : 'Welcome to the bar.'} eyebrow="YOUR ACCOUNT">
     <Text style={s.muted}>A sign-in link, sent to your email. No password to remember.</Text>
     {!available ? <View style={s.card}><Text style={s.heading}>Train without an account.</Text><Text style={s.muted}>Email sign-in is not configured in this build. Setup, workouts, and history work locally on this device.</Text></View> : signedIn ? <Button title="Sign out" secondary disabled={busy} onPress={async () => { setBusy(true); try { const result = await getSupabase()?.auth.signOut({ scope: 'local' }); if (result?.error) throw result.error; setSignedIn(false); setMessage('Signed out. Local training stays on this device.'); } catch { setMessage('Could not sign out. Try again.'); } finally { setBusy(false); } }} /> : <><Field label="Email address" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} autoComplete="email" placeholder="you@example.com" editable={!busy} onSubmitEditing={() => { if (!busy) void sendLink(); }} /><Button title={busy ? 'Please wait…' : 'Send magic link'} disabled={busy} onPress={sendLink} /></>}
-    {!!message && <Message>{message}</Message>}
+    {!!message && <Message tone={message.startsWith('You’re signed in') || message.startsWith('Signed out') || message.startsWith('Check your inbox') ? 'success' : 'error'}>{message}</Message>}
     <Button title="Continue to training" secondary onPress={() => router.replace('/')} />
     <Text style={s.muted}>Workouts are saved on this device, not synced to your account. People using this browser or device share the same local training.</Text>
   </Screen>;

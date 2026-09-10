@@ -4,7 +4,7 @@ import { Text, View } from 'react-native';
 import { useTraining } from '../src/state/store';
 import { liftNames, lifts, setupTraining, type Profile } from '../src/training/flows';
 import { barWeight, type Unit } from '../src/training/engine';
-import { Button, Field, Message, Screen, s } from '../src/ui/common';
+import { Button, Field, Loading, Message, Screen, s } from '../src/ui/common';
 
 export default function Onboarding() {
   const { data, ready, saving, error: storageError, update } = useTraining();
@@ -15,7 +15,7 @@ export default function Onboarding() {
   const [unit, setUnit] = useState<Unit>(data.training.unit);
   const [values, setValues] = useState<Partial<Record<(typeof lifts)[number], string>>>({});
   const [error, setError] = useState('');
-  if (!ready) return <Screen title="Your starting point"><Message>{storageError || 'Loading training…'}</Message></Screen>;
+  if (!ready) return <Screen title="Your starting point">{storageError ? <Message>{storageError}</Message> : <Loading>Loading training…</Loading>}</Screen>;
   if (data.profile) return <Redirect href="/" />;
   async function finish() {
     try { const training = setupTraining(unit, values); await update(current => ({ ...current, profile: { experience, goal }, training })); router.replace('/'); }

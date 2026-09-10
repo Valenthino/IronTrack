@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createTrainingState, workoutDefinition, completeSession, warmupSets, restSeconds, calculatePlates, increment } from '../.test-build/engine.js';
+import { createTrainingState, workoutDefinition, completeSession, warmupSets, restSeconds, calculatePlates, increment, barWeight } from '../.test-build/engine.js';
 
 function results(state, failed = []) {
   return workoutDefinition(state.nextWorkout).map(({ lift, sets }) => ({
@@ -95,4 +95,13 @@ test('plate totals conserve weight and never exceed targets across both units', 
     assert.equal(result.loadedWeight + result.remainder, target);
     assert.ok(result.remainder >= 0 && result.remainder < increment(unit));
   }
+});
+test('invalid units and workouts are rejected consistently across the engine', () => {
+  for (const bad of ['stone', 'g', '']) {
+    assert.throws(() => increment(bad));
+    assert.throws(() => barWeight(bad));
+    assert.throws(() => createTrainingState(bad));
+    assert.throws(() => calculatePlates(100, bad));
+  }
+  for (const bad of ['C', 'c', '']) assert.throws(() => workoutDefinition(bad));
 });
