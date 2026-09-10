@@ -1,10 +1,12 @@
 // Local-only PostgreSQL/WASM test. No connection strings or remote access.
 // npm install --prefix /tmp/irontrack-sql-validation @electric-sql/pglite@0.3.14
+// node scripts/validate-schema.mjs (uses the local installation above by default)
 // node scripts/validate-schema.mjs /tmp/irontrack-sql-validation/node_modules/@electric-sql/pglite/dist/index.js
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
-const { PGlite } = await import(pathToFileURL(process.argv[2]).href);
+const pglitePath = process.argv[2] ?? '/tmp/irontrack-sql-validation/node_modules/@electric-sql/pglite/dist/index.js';
+const { PGlite } = await import(pathToFileURL(pglitePath).href);
 const db = new PGlite();
 let checks = 0;
 const a = '11111111-1111-4111-8111-111111111111';
