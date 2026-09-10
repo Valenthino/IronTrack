@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "IronTrack",
+    "slug": "irontrack",
+    "scheme": "irontrack",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "plugins": [
+      "expo-router",
+      "expo-status-bar"
+    ],
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "name": "IronTrack"
+    },
+    "ios": {
+      "supportsTablet": true
+    }
+  }
+}
