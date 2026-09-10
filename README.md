@@ -13,7 +13,7 @@ npm run web
 
 For a device, run `npm start` and open with an SDK-compatible Expo Go client. `npm run android` and `npm run ios` target installed emulators/simulators; iOS requires macOS and Xcode.
 
-## Supabase (optional in this round)
+## Supabase
 
 The preview works without configuration. To configure a backend, copy `.env.example` to `.env.local` and set:
 
@@ -22,7 +22,9 @@ The preview works without configuration. To configure a backend, copy `.env.exam
 
 Restart Expo after changes. Expo embeds these values in the client bundle; never use a service-role key or other secret. Enable row-level security and appropriate policies before adding data access. A physical phone needs a URL reachable from the phone; localhost points to the phone itself.
 
-`src/lib/supabase.ts` exposes a lazy singleton through `getSupabase()`, returning `null` when configuration is absent. Native session storage uses AsyncStorage; web uses Supabase's default browser storage. No backend requests are made by the shell. “Configured” means variables are present, not that a connection was verified. Auth flows, lifecycle-based token refresh, database schema, and workout persistence are future work.
+`src/lib/supabase.ts` exposes a lazy singleton through `getSupabase()`, returning `null` when configuration is absent. Native session storage uses AsyncStorage; web uses Supabase's default browser storage. No backend requests are made by the shell. “Configured” means variables are present, not that a connection was verified. The client is typed with the Round 2 database model. Auth flows, lifecycle-based token refresh, and workout persistence UI are future work.
+
+The SQL migration, reference workouts, data contract, isolated validation, and dedicated-project application instructions are in [supabase/README.md](supabase/README.md). No remote migration or deployment has been performed.
 
 ## Verify and build web
 
