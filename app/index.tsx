@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { AppState, Pressable, Text, View } from 'react-native';
 import { useTraining } from '../src/state/store';
 import { draftComplete, finishWorkout, liftNames, remainingSeconds, setReps, startDraft } from '../src/training/flows';
-import { barWeight, calculatePlates, restSeconds, warmupSets, workoutDefinition, type Lift, type Workout } from '../src/training/engine';
+import { workoutName, barWeight, calculatePlates, restSeconds, warmupSets, workoutDefinition, type Lift, type Workout } from '../src/training/engine';
 import { theme } from '../src/theme';
 import { Button, Loading, Message, Screen, s } from '../src/ui/common';
 
@@ -23,7 +23,7 @@ export default function Today() {
   }, []);
   const draft = data.draft;
   const training = draft?.training || data.training;
-  const workout = draft ? training.nextWorkout : preview || training.nextWorkout;
+  const workout = draft ? training.nextWorkout : (training.program.days.some(day => day.id === preview) ? preview! : training.nextWorkout);
   const deadline = draft?.restDeadline ?? null;
   const seconds = remainingSeconds(deadline, now);
   async function setRest(duration: number | null) {
@@ -43,12 +43,13 @@ export default function Today() {
   }
   if (!ready) return <Screen title="Today’s workout">{storageError ? <Message>{storageError}</Message> : <Loading>Loading training…</Loading>}</Screen>;
   if (!data.profile) return <Screen title="One lift at a time." eyebrow="SIMPLE WORKOUTS. STEADY PROGRESS."><Text style={s.text}>Three lifts. Three workouts per week, with a rest day between sessions. Alternate A and B each time.</Text><View style={s.card}><Text style={s.heading}>Your first 5 × 5 starts here.</Text><Text style={s.muted}>Set your starting weights, log each set, and let your plan progress with you.</Text><Button title="Set up my training" onPress={() => router.push('/onboarding')} /><Button title="Sign in with email" secondary onPress={() => router.push('/auth')} /></View><Text style={s.muted}>No account needed to train. Your workouts are saved on this device.</Text></Screen>;
-  return <Screen title={draft ? `Let’s lift. Workout ${workout}.` : 'Today’s workout'} eyebrow={`${data.profile.goal.toUpperCase()} · ${draft ? 'IN PROGRESS' : `NEXT UP: ${training.nextWorkout}`}`}>
+  return <Screen title={draft ? `Let’s lift. Workout ${workoutName(training, workout)}.` : 'Today’s workout'} eyebrow={`${data.profile.goal.toUpperCase()} · ${draft ? 'IN PROGRESS' : `NEXT UP: ${workoutName(training)}`}`}>
+    <Button title="Plan / Program" secondary onPress={() => router.push('/program')} />
     {saved && <Message tone="success">Workout saved. Your next targets are ready.</Message>}
-    {!draft && <View style={s.row}>{(['A', 'B'] as const).map(value => <Button key={value} title={`Workout ${value}${workout === value ? ' ✓' : ''}`} secondary={workout !== value} onPress={() => setPreview(value)} />)}</View>}
-    {!draft && workout !== training.nextWorkout && <Text style={s.muted}>Preview only. Your next scheduled workout is {training.nextWorkout}.</Text>}
+    {!draft && <View style={s.row}>{training.program.days.map(day => <Button key={day.id} title={`${day.name}${workout === day.id ? ' ✓' : ''}`} secondary={workout !== day.id} onPress={() => setPreview(day.id)} />)}</View>}
+    {!draft && workout !== training.nextWorkout && <Text style={s.muted}>Preview only. Your next scheduled workout is {workoutName(training)}.</Text>}
     {draft && <View style={s.card}><View style={s.row}><Text style={s.heading}>Rest timer</Text><Text accessibilityLabel={`${Math.floor(seconds / 60)} minutes ${seconds % 60} seconds remaining`} style={s.heading}>{Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')}</Text></View><Text accessibilityLiveRegion="polite" style={s.muted}>{deadline === null ? 'Starts when you log a set.' : seconds === 0 ? 'Rest complete. Ready for your next set.' : 'Take your time. Make the next set count.'}</Text><View style={s.row}><Button title="2 minutes" secondary disabled={saving} onPress={() => setRest(restSeconds())} /><Button title="3 minutes" secondary disabled={saving} onPress={() => setRest(restSeconds(true))} /><Button title="Skip rest" secondary disabled={saving} onPress={() => setRest(null)} /></View></View>}
-    {workoutDefinition(workout).map(({ lift, sets, reps }, index) => {
+    {workoutDefinition(workout, training.program).map(({ lift, sets, reps }, index) => {
       const weight = training.lifts[lift].weight;
       const warmups = warmupSets(weight, training.unit, training.customBarWeight ?? barWeight(training.unit), training.microloading);
       const { plates, remainder } = calculatePlates(weight, training.unit, training.customBarWeight ?? barWeight(training.unit), training.microloading);
@@ -64,6 +65,6 @@ export default function Today() {
       </View>;
     })}
     {!!(error || storageError) && <Message>{error || storageError}</Message>}
-    {!draft ? <Button title={`Start workout ${training.nextWorkout}`} disabled={saving} onPress={async () => { const success = await act(current => ({ ...current, draft: startDraft(current.training, `${Date.now()}-${Math.random().toString(36).slice(2)}`) })); if (success) { setSaved(false); setPreview(null); } }} /> : <><Text style={s.muted}>Tap each set box and choose your reps. Log every working set to finish; missed reps keep the lift at its current weight, with a deload after three stalls.</Text><Button title={saving ? 'Saving…' : 'Finish & save workout'} disabled={saving || !draftComplete(draft)} onPress={async () => { if (await act(current => finishWorkout(current, new Date().toISOString()))) { setSaved(true); setPreview(null); setSelected(null); } }} /><Text style={s.muted}>Your sets are saved as you go. You can leave and resume this workout.</Text></>}
+    {!draft ? <Button title={`Start workout ${workoutName(training)}`} disabled={saving} onPress={async () => { const success = await act(current => ({ ...current, draft: startDraft(current.training, `${Date.now()}-${Math.random().toString(36).slice(2)}`) })); if (success) { setSaved(false); setPreview(null); } }} /> : <><Text style={s.muted}>Tap each set box and choose your reps. Log every working set to finish; missed reps keep the lift at its current weight, with a deload after three stalls.</Text><Button title={saving ? 'Saving…' : 'Finish & save workout'} disabled={saving || !draftComplete(draft)} onPress={async () => { if (await act(current => finishWorkout(current, new Date().toISOString()))) { setSaved(true); setPreview(null); setSelected(null); } }} /><Text style={s.muted}>Your sets are saved as you go. You can leave and resume this workout.</Text></>}
   </Screen>;
 }

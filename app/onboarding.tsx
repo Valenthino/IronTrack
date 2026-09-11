@@ -51,7 +51,7 @@ export default function Onboarding() {
     if (!validSchedule(schedule)) { setStep(2); setError(`Choose exactly ${daysPerWeek} training days.`); return; }
     if (!validateWeights()) { setStep(3); return; }
     try {
-      const training = setupTraining(unit, values);
+      const training = setupTraining(unit, values, daysPerWeek);
       await update(current => ({ ...current, profile: { experience, goal, schedule }, training }));
       router.replace('/');
     } catch { setError('Your plan could not be saved. Please try again.'); }

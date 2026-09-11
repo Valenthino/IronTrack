@@ -1,9 +1,13 @@
 /** Pure training rules. All weights are total bar + plates in the selected unit. */
 export type Unit = 'kg' | 'lb';
-export type Workout = 'A' | 'B';
+export type Workout = string;
+export type ProgramDay = Readonly<{ id: string; name: string; lifts: readonly Lift[] }>;
+export type Program = Readonly<{ name: string; daysPerWeek: number; days: readonly ProgramDay[] }>;
+export type Preset = 'classic' | 'ppl' | 'upper_lower';
 export type Lift = 'squat' | 'bench_press' | 'barbell_row' | 'overhead_press' | 'deadlift';
 export type LiftState = Readonly<{ weight: number; stalls: number }>;
 export type TrainingState = Readonly<{
+  program: Program;
   unit: Unit;
   nextWorkout: Workout;
   microloading: boolean;
@@ -31,16 +35,41 @@ export function barWeight(unit: Unit): number {
   validateUnit(unit);
   return unit === 'kg' ? 20 : 45;
 }
-export function workoutDefinition(workout: Workout) {
-  if (workout !== 'A' && workout !== 'B') throw new RangeError('Unknown workout');
-  const lifts: Lift[] = workout === 'A'
-    ? ['squat', 'bench_press', 'barbell_row']
-    : ['squat', 'overhead_press', 'deadlift'];
-  return lifts.map(lift => ({ lift, sets: lift === 'deadlift' ? 1 : 5, reps: 5 }));
+export function presetProgram(preset: Preset): Program {
+  const day = (id: string, name: string, lifts: Lift[]): ProgramDay => ({ id, name, lifts });
+  switch (preset) {
+    case 'classic': return { name: 'Classic A/B', daysPerWeek: 3, days: [day('A', 'A', ['squat', 'bench_press', 'barbell_row']), day('B', 'B', ['squat', 'overhead_press', 'deadlift'])] };
+    case 'ppl': return { name: 'PPL', daysPerWeek: 3, days: [day('push', 'Push', ['bench_press', 'overhead_press']), day('pull', 'Pull', ['barbell_row', 'deadlift']), day('legs', 'Legs', ['squat'])] };
+    case 'upper_lower': return { name: 'Upper/Lower', daysPerWeek: 4, days: [day('upper', 'Upper', ['bench_press', 'barbell_row', 'overhead_press']), day('lower', 'Lower', ['squat', 'deadlift'])] };
+    default: throw new RangeError('Unknown preset');
+  }
+}
+export function validProgram(program: Program): boolean {
+  const core = ['squat', 'bench_press', 'barbell_row', 'overhead_press', 'deadlift'];
+  return !!program && typeof program.name === 'string' && !!program.name.trim()
+    && Number.isInteger(program.daysPerWeek) && program.daysPerWeek >= 1 && program.daysPerWeek <= 7
+    && Array.isArray(program.days) && program.days.length > 0
+    && new Set(program.days.map(day => day?.id)).size === program.days.length
+    && program.days.every(day => !!day && typeof day.id === 'string' && !!day.id.trim()
+      && typeof day.name === 'string' && !!day.name.trim() && Array.isArray(day.lifts)
+      && day.lifts.length > 0 && new Set(day.lifts).size === day.lifts.length && day.lifts.every((lift: unknown) => typeof lift === 'string' && core.includes(lift)));
+}
+export function workoutDefinition(workout: Workout, program: Program = presetProgram('classic')) {
+  if (!validProgram(program)) throw new RangeError('Invalid program');
+  const day = program.days.find(day => day.id === workout);
+  if (!day) throw new RangeError('Unknown workout');
+  return day.lifts.map(lift => ({ lift, sets: lift === 'deadlift' ? 1 : 5, reps: 5 }));
+}
+export function nextWorkout(workout: Workout, program: Program): Workout {
+  workoutDefinition(workout, program);
+  return program.days[(program.days.findIndex(day => day.id === workout) + 1) % program.days.length].id;
+}
+export function workoutName(state: TrainingState, id = state.nextWorkout): string {
+  return state.program.days.find(day => day.id === id)?.name ?? id;
 }
 export function createTrainingState(unit: Unit): TrainingState {
   const weight = barWeight(unit);
-  return { unit, nextWorkout: 'A', microloading: false, customBarWeight: null, lifts: {
+  return { program: presetProgram('classic'), unit, nextWorkout: 'A', microloading: false, customBarWeight: null, lifts: {
     squat: { weight, stalls: 0 }, bench_press: { weight, stalls: 0 },
     barbell_row: { weight, stalls: 0 }, overhead_press: { weight, stalls: 0 },
     deadlift: { weight, stalls: 0 },
@@ -49,11 +78,11 @@ export function createTrainingState(unit: Unit): TrainingState {
 
 /** Call once when a session is finalized. Abandoned sessions should not be submitted.
  * All prescribed working sets must be logged (zero reps is a failed attempt).
- * Warm-ups never count toward progression. Squat state is shared across A and B.
+ * Warm-ups never count toward progression. Squat state is shared across all program days.
  */
 export function completeSession(state: TrainingState, results: readonly ExerciseResult[]): TrainingState {
   const step = increment(state.unit, state.microloading);
-  const definition = workoutDefinition(state.nextWorkout);
+  const definition = workoutDefinition(state.nextWorkout, state.program);
   if (results.length !== definition.length || new Set(results.map(r => r.lift)).size !== results.length) {
     throw new RangeError('Provide each prescribed exercise exactly once');
   }
@@ -80,7 +109,7 @@ export function completeSession(state: TrainingState, results: readonly Exercise
       stalls: stalls === 3 ? 0 : stalls,
     };
   }
-  return { ...state, nextWorkout: state.nextWorkout === 'A' ? 'B' : 'A', lifts };
+  return { ...state, nextWorkout: nextWorkout(state.nextWorkout, state.program), lifts };
 }
 
 /** Two empty-bar sets, then 40% ×5, 60% ×3, 80% ×2; omit duplicate or working loads. */

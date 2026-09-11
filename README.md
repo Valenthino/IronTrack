@@ -115,3 +115,16 @@ Verification: `npm test` (24 passing), `npm run typecheck`, and `EXPO_NO_DOTENV=
 Onboarding uses five steps with red selection cards, progress, back navigation, inline validation, and native geometric lift illustrations. Schedule preferences (2/3/4 days and a training/rest pattern) are stored as optional profile data, so existing v1/v2 saves remain compatible. They do not change workout sequencing or add reminders. Experience and goal personalize advisory hints; blank weights still use the nominal empty bar. Explicit weights are retained separately for lb and kg while navigating the wizard. Done saves through the existing guarded local store. Auth and backend behavior are unchanged.
 
 Focused verification: `npm test`, `npm run typecheck`, and `EXPO_NO_DOTENV=1 npm run build:web`. With the export served on port 8084 and a disposable Chromium profile exposing CDP on port 9334, run `node scripts/smoke-onboarding.mjs` for the five-step mobile flow, validation, unit/back retention, review, save/reload, 320px overflow and 48px target checks. This browser check clears only the test origin's local storage.
+
+
+## Approved round R3 — custom programs
+
+Plan / Program is available from Today and Settings. Classic A/B remains the default; PPL (Push, Pull, Legs) and Upper/Lower are available as replacement presets. Replacement requires an inline confirmation, starts at the first day, and preserves all lift targets and completed history.
+
+Create a custom program by editing its name, adding/removing/renaming days, and adding/removing/reordering the five core lifts. Days can be reordered and have stable IDs, so renaming does not change rotation. Save applies the whole validated program; each day must contain at least one unique core lift. Removing the upcoming day selects the first remaining day. Choose 1–7 days per week independently of the rotation length. A changed frequency clears an incompatible onboarding weekday pattern; no calendar scheduling or reminders are added.
+
+The pure engine resolves ordered days from the program, wraps after its final day, and preserves per-lift progression across all days. Prescriptions, microloading, three-stall deloads, warmups and rest behavior remain unchanged. Plan edits are blocked during active workouts. History retains each session’s program/day names and prescriptions as saved.
+
+AppData version 3 migrates v1/v2 current training, active drafts and history to Classic A/B, keeping the existing local storage key and preserving the next A/B day, weights, stalls, equipment, logged reps and rest deadline. Existing schedule frequency is retained; otherwise frequency defaults to three. No sync, backend, deployment, or R4–R6 work is included.
+
+R3 verification: `npm test` (44 tests), `npm run typecheck`, and `EXPO_NO_DOTENV=1 npm run build:web`.

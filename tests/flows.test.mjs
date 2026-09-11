@@ -73,7 +73,7 @@ test('local restore supports drafts and history; rejects damaged or unsupported 
   assert.deepEqual(restoreData(JSON.stringify(data)), data);
   const done = finishWorkout(data, '2026-09-09');
   assert.deepEqual(restoreData(JSON.stringify(done)), done);
-  for (const bad of ['null', '{}', '{', JSON.stringify({ ...data, version: 3 }), JSON.stringify({ ...data, training: { ...data.training, unit: 'stone' } }), JSON.stringify({ ...data, draft: { ...data.draft, reps: {} } })]) assert.throws(() => restoreData(bad));
+  for (const bad of ['null', '{}', '{', JSON.stringify({ ...data, version: 4 }), JSON.stringify({ ...data, training: { ...data.training, unit: 'stone' } }), JSON.stringify({ ...data, draft: { ...data.draft, reps: {} } })]) assert.throws(() => restoreData(bad));
 });
 test('rest deadline recovers elapsed time without negative countdowns', () => {
   assert.equal(remainingSeconds(null, 0), 0);
@@ -146,13 +146,14 @@ test('v1 migration preserves all lift values, history, active reps and rest dead
   const legacy = JSON.parse(JSON.stringify(current));
   legacy.version = 1;
   for (const state of [legacy.training, legacy.draft.training, ...legacy.history.map(entry => entry.training)]) {
+    delete state.program;
     delete state.microloading;
     delete state.customBarWeight;
   }
   const raw = JSON.stringify(legacy);
   const migrated = restoreData(raw);
   assert.deepEqual(migrated, current);
-  assert.equal(migrated.version, 2);
+  assert.equal(migrated.version, 3);
   assert.equal(migrated.training.microloading, false);
   assert.equal(migrated.training.customBarWeight, null);
   assert.deepEqual(restoreData(JSON.stringify(migrated)), migrated);
