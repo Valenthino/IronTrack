@@ -59,8 +59,8 @@ test('incomplete, duplicate, incorrect and invalid logs are rejected without mut
     assert.throws(() => completeSession(state, invalid));
   }
 });
-test('deload rounds to loadable increments and floors at the bar', () => {
-  for (const [weight, expected] of [[82.5, 75], [20, 20]]) {
+test('deload rounds to selected increments without a bar floor', () => {
+  for (const [weight, expected] of [[82.5, 75], [20, 17.5], [10, 10], [0, 0], [1, 0]]) {
     const base = createTrainingState('kg');
     const state = { ...base, lifts: { ...base.lifts, squat: { weight, stalls: 2 } } };
     assert.equal(completeSession(state, results(state, ['squat'])).lifts.squat.weight, expected);
@@ -72,7 +72,7 @@ test('warmups ramp below working weight, deduplicate light loads, support custom
   assert.equal(warmupSets(22.5, 'kg').length, 2);
   assert.deepEqual(warmupSets(135, 'lb').map(s => s.weight), [45, 45, 50, 80, 105]);
   assert.equal(warmupSets(50, 'kg', 15)[0].weight, 15);
-  assert.throws(() => warmupSets(10, 'kg'));
+  assert.deepEqual(warmupSets(10, 'kg'), []);
 });
 test('rest defaults are 2–3 minutes', () => {
   assert.equal(restSeconds(), 120);
@@ -85,7 +85,7 @@ test('plate calculator gives matched pairs in kg/lb and explicit unloadable rema
   assert.equal(calculatePlates(23, 'kg').remainder, 0.5);
   assert.equal(calculatePlates(49, 'lb').loadedWeight, 45);
   assert.equal(calculatePlates(65, 'kg', 15).loadedWeight, 65);
-  for (const value of [-1, NaN, Infinity, 10]) assert.throws(() => calculatePlates(value, 'kg'));
+  for (const value of [-1, NaN, Infinity]) assert.throws(() => calculatePlates(value, 'kg'));
 });
 test('plate totals conserve weight and never exceed targets across both units', () => {
   for (const unit of ['kg', 'lb']) for (let target = 45; target <= 300; target += 0.5) {
@@ -104,4 +104,32 @@ test('invalid units and workouts are rejected consistently across the engine', (
     assert.throws(() => calculatePlates(100, bad));
   }
   for (const bad of ['C', 'c', '']) assert.throws(() => workoutDefinition(bad));
+});
+
+test('zero and subbar loads return no warmups and a signed plate deficit', () => {
+  for (const unit of ['kg', 'lb']) for (const weight of [0, 1, 10]) {
+    assert.deepEqual(warmupSets(weight, unit), []);
+    assert.deepEqual(calculatePlates(weight, unit), { plates: [], loadedWeight: barWeight(unit), remainder: weight - barWeight(unit) });
+  }
+  assert.deepEqual(warmupSets(40, 'lb', 40), []);
+  assert.equal(warmupSets(100, 'lb', 40)[0].weight, 40);
+  assert.deepEqual(calculatePlates(50, 'lb', 40), { plates: [{ weight: 5, count: 1 }], loadedWeight: 50, remainder: 0 });
+  assert.deepEqual(calculatePlates(0, 'lb', 0), { plates: [], loadedWeight: 0, remainder: 0 });
+});
+test('microloading controls progression, deload snapping, warmups and plate pairs', () => {
+  for (const unit of ['kg', 'lb']) {
+    assert.equal(increment(unit, false), increment(unit));
+    assert.equal(increment(unit, true), increment(unit) / 2);
+    for (const microloading of [false, true]) {
+      const base = { ...createTrainingState(unit), microloading };
+      const state = { ...base, lifts: { ...base.lifts, squat: { weight: 0, stalls: 0 } } };
+      assert.equal(completeSession(state, results(state)).lifts.squat.weight, increment(unit, microloading));
+      const stalled = { ...base, lifts: { ...base.lifts, squat: { weight: 40, stalls: 2 } } };
+      assert.equal(completeSession(stalled, results(stalled, ['squat'])).lifts.squat.weight, Math.round(36 / increment(unit, microloading)) * increment(unit, microloading));
+    }
+    const target = barWeight(unit) + increment(unit, true);
+    assert.equal(calculatePlates(target, unit).remainder, increment(unit, true));
+    assert.equal(calculatePlates(target, unit, barWeight(unit), true).remainder, 0);
+  }
+  assert.deepEqual(warmupSets(30, 'kg', 0, true).map(set => set.weight), [0, 0, 11.25, 17.5, 23.75]);
 });

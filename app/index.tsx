@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { AppState, Pressable, Text, View } from 'react-native';
 import { useTraining } from '../src/state/store';
 import { draftComplete, finishWorkout, liftNames, remainingSeconds, setReps, startDraft } from '../src/training/flows';
-import { calculatePlates, restSeconds, warmupSets, workoutDefinition, type Lift, type Workout } from '../src/training/engine';
+import { barWeight, calculatePlates, restSeconds, warmupSets, workoutDefinition, type Lift, type Workout } from '../src/training/engine';
 import { theme } from '../src/theme';
 import { Button, Loading, Message, Screen, s } from '../src/ui/common';
 
@@ -50,11 +50,12 @@ export default function Today() {
     {draft && <View style={s.card}><View style={s.row}><Text style={s.heading}>Rest timer</Text><Text accessibilityLabel={`${Math.floor(seconds / 60)} minutes ${seconds % 60} seconds remaining`} style={s.heading}>{Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')}</Text></View><Text accessibilityLiveRegion="polite" style={s.muted}>{deadline === null ? 'Starts when you log a set.' : seconds === 0 ? 'Rest complete. Ready for your next set.' : 'Take your time. Make the next set count.'}</Text><View style={s.row}><Button title="2 minutes" secondary disabled={saving} onPress={() => setRest(restSeconds())} /><Button title="3 minutes" secondary disabled={saving} onPress={() => setRest(restSeconds(true))} /><Button title="Skip rest" secondary disabled={saving} onPress={() => setRest(null)} /></View></View>}
     {workoutDefinition(workout).map(({ lift, sets, reps }, index) => {
       const weight = training.lifts[lift].weight;
-      const warmups = warmupSets(weight, training.unit);
-      const { plates } = calculatePlates(weight, training.unit);
+      const warmups = warmupSets(weight, training.unit, training.customBarWeight ?? barWeight(training.unit), training.microloading);
+      const { plates, remainder } = calculatePlates(weight, training.unit, training.customBarWeight ?? barWeight(training.unit), training.microloading);
       return <View key={lift} style={s.card}><Text style={s.eyebrow}>0{index + 1} / {sets} × {reps}</Text><View style={s.row}><Text accessibilityRole="header" style={s.heading}>{liftNames[lift]}</Text><Text style={s.heading}>{weight} {training.unit}</Text></View>
         <Text style={s.muted}>Plates per side: {plates.length ? plates.map(plate => `${plate.count} × ${plate.weight} ${training.unit}`).join(' + ') : 'None — empty bar.'}</Text>
-        <Text style={s.muted}>Warm-up: {warmups.length ? warmups.map(set => `${set.weight} ${training.unit} × ${set.reps}`).join(' · ') : 'Empty-bar working weight; no separate warm-up sets.'}</Text>
+        {remainder !== 0 && <Text style={s.muted}>{remainder < 0 ? `Bar exceeds target by ${-remainder} ${training.unit}; use lighter equipment.` : `Unloaded remainder: ${remainder} ${training.unit}.`}</Text>}
+        <Text style={s.muted}>Warm-up: {warmups.length ? warmups.map(set => `${set.weight} ${training.unit} × ${set.reps}`).join(' · ') : 'At or below bar weight; no separate warm-up sets.'}</Text>
         <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>{Array.from({ length: sets }, (_, i) => {
           const logged = draft?.reps[lift]?.[i];
           return <Pressable key={i} disabled={!draft || saving} accessibilityRole="button" accessibilityLabel={`${liftNames[lift]}, set ${i + 1}, ${logged == null ? 'not logged' : `${logged} of 5 reps`}. Edit reps.`} accessibilityState={{ disabled: !draft || saving }} onPress={() => setSelected({ lift, index: i })} style={{ minWidth: 48, minHeight: 52, alignItems: 'center', justifyContent: 'center', borderRadius: 8, borderWidth: 1, borderColor: selected?.lift === lift && selected.index === i ? 'white' : theme.colors.borderMuted, backgroundColor: logged == null ? theme.colors.background : logged === 5 ? theme.colors.red : theme.colors.text }}><Text style={{ color: logged != null && logged < 5 ? theme.colors.background : 'white', fontWeight: '800', fontSize: 20 }}>{logged == null ? '—' : logged}</Text><Text style={{ color: logged != null && logged < 5 ? theme.colors.border : logged === 5 ? 'white' : theme.colors.muted, fontSize: 10 }}>SET {i + 1}</Text></Pressable>;

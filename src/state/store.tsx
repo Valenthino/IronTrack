@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { initialData, restoreData, type AppData } from '../training/flows';
+// Keep the original key so restoreData can migrate existing v1 installations.
 const KEY = 'irontrack.training.v1';
 type Store = { data: AppData; ready: boolean; saving: boolean; error: string; update: (change: (data: AppData) => AppData) => Promise<void> };
 const Context = createContext<Store | null>(null);

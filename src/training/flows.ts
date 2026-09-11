@@ -5,15 +5,15 @@ export const lifts = Object.keys(liftNames) as Lift[];
 export type Profile = { experience: 'new' | 'returning' | 'experienced'; goal: 'strength' | 'size' | 'confidence' };
 export type Draft = { id: string; restDeadline?: number | null; training: TrainingState; reps: Partial<Record<Lift, (number | null)[]>> };
 export type Entry = { id: string; completedAt: string; training: TrainingState; reps: Draft['reps'] };
-export type AppData = { version: 1; profile: Profile | null; training: TrainingState; draft: Draft | null; history: Entry[] };
-export const initialData = (): AppData => ({ version: 1, profile: null, training: createTrainingState('lb'), draft: null, history: [] });
+export type AppData = { version: 2; profile: Profile | null; training: TrainingState; draft: Draft | null; history: Entry[] };
+export const initialData = (): AppData => ({ version: 2, profile: null, training: createTrainingState('lb'), draft: null, history: [] });
 export function setupTraining(unit: Unit, values: Partial<Record<Lift, string>>): TrainingState {
   const state = createTrainingState(unit);
   return { ...state, lifts: Object.fromEntries(lifts.map(lift => {
     const raw = values[lift]?.trim();
     const weight = raw ? Number(raw) : barWeight(unit);
-    if (!Number.isFinite(weight) || !Number.isSafeInteger(Math.round(weight / increment(unit))) || weight < barWeight(unit) || Math.abs(weight / increment(unit) - Math.round(weight / increment(unit))) > 1e-8) {
-      throw new Error(`Enter a ${liftNames[lift]} weight of at least ${barWeight(unit)} ${unit}, in ${increment(unit)} ${unit} steps.`);
+    if (!Number.isFinite(weight) || weight < 0) {
+      throw new Error(`Enter a finite ${liftNames[lift]} weight of 0 ${unit} or more.`);
     }
     return [lift, { weight, stalls: 0 }];
   })) as TrainingState['lifts'] };
@@ -41,8 +41,13 @@ export function changeUnit(data: AppData, unit: Unit): AppData {
   if (data.training.unit === unit) return data;
   if (data.draft) throw new Error('Finish your active workout before changing units.');
   const ratio = unit === 'lb' ? 2.2046226218 : 1 / 2.2046226218;
-  const step = increment(unit);
-  return { ...data, training: { ...data.training, unit, lifts: Object.fromEntries(lifts.map(lift => [lift, { ...data.training.lifts[lift], weight: Math.max(barWeight(unit), Math.round(data.training.lifts[lift].weight * ratio / step) * step) }])) as TrainingState['lifts'] } };
+  const step = increment(unit, data.training.microloading);
+  return { ...data, training: { ...data.training, unit, customBarWeight: data.training.customBarWeight === null ? null : Number((data.training.customBarWeight * ratio).toFixed(8)), lifts: Object.fromEntries(lifts.map(lift => [lift, { ...data.training.lifts[lift], weight: Math.round(data.training.lifts[lift].weight * ratio / step) * step }])) as TrainingState['lifts'] } };
+}
+export function changeEquipment(data: AppData, microloading: boolean, customBarWeight: number | null): AppData {
+  if (data.draft) throw new Error('Finish your active workout before changing equipment.');
+  if (typeof microloading !== 'boolean' || (customBarWeight !== null && (!Number.isFinite(customBarWeight) || customBarWeight < 0))) throw new Error('Enter a finite bar weight of 0 or more.');
+  return { ...data, training: { ...data.training, microloading, customBarWeight } };
 }
 export function remainingSeconds(deadline: number | null, now: number): number {
   return deadline === null ? 0 : Math.max(0, Math.ceil((deadline - now) / 1000));
@@ -51,13 +56,21 @@ export function validEmail(value: string): boolean { return /^[^\s@]+@[^\s@]+\.[
 
 /** Validate local storage before exposing it to the engine or screens. */
 export function restoreData(raw: string): AppData {
-  const value = JSON.parse(raw) as AppData;
-  const validTraining = (state: TrainingState) => state && (state.unit === 'kg' || state.unit === 'lb') && (state.nextWorkout === 'A' || state.nextWorkout === 'B') && lifts.every(lift => {
+  const parsed = JSON.parse(raw);
+  if (parsed?.version === 1) {
+    const migrateTraining = (state: TrainingState) => state && ({ ...state, microloading: false, customBarWeight: null });
+    parsed.training = migrateTraining(parsed.training);
+    if (parsed.draft) parsed.draft.training = migrateTraining(parsed.draft.training);
+    if (Array.isArray(parsed.history)) parsed.history = parsed.history.map((entry: Entry) => entry && ({ ...entry, training: migrateTraining(entry.training) }));
+    parsed.version = 2;
+  }
+  const value = parsed as AppData;
+  const validTraining = (state: TrainingState) => state && (state.unit === 'kg' || state.unit === 'lb') && (state.nextWorkout === 'A' || state.nextWorkout === 'B') && typeof state.microloading === 'boolean' && (state.customBarWeight === null || (Number.isFinite(state.customBarWeight) && state.customBarWeight >= 0)) && lifts.every(lift => {
     const item = state.lifts?.[lift];
-    return item && Number.isFinite(item.weight) && item.weight >= barWeight(state.unit) && Number.isSafeInteger(Math.round(item.weight / increment(state.unit))) && Math.abs(item.weight / increment(state.unit) - Math.round(item.weight / increment(state.unit))) <= 1e-8 && Number.isInteger(item.stalls) && item.stalls >= 0 && item.stalls <= 2;
+    return item && Number.isFinite(item.weight) && item.weight >= 0 && Number.isInteger(item.stalls) && item.stalls >= 0 && item.stalls <= 2;
   });
   const validDraft = (draft: Draft) => draft && typeof draft.id === 'string' && (draft.restDeadline == null || (Number.isFinite(draft.restDeadline) && draft.restDeadline >= 0)) && validTraining(draft.training) && workoutDefinition(draft.training.nextWorkout).every(({ lift, sets }) => Array.isArray(draft.reps?.[lift]) && draft.reps[lift]!.length === sets && draft.reps[lift]!.every(r => r === null || (Number.isInteger(r) && r >= 0 && r <= 5)));
-  if (value?.version !== 1 || !validTraining(value.training) || (value.profile !== null && (!value.profile || !['new', 'returning', 'experienced'].includes(value.profile.experience) || !['strength', 'size', 'confidence'].includes(value.profile.goal))) || (value.draft !== null && !validDraft(value.draft)) || !Array.isArray(value.history) || !value.history.every(entry => validDraft(entry) && draftComplete(entry) && typeof entry.completedAt === 'string' && Number.isFinite(Date.parse(entry.completedAt)))) throw new Error('Saved training data could not be read.');
+  if (value?.version !== 2 || !validTraining(value.training) || (value.profile !== null && (!value.profile || !['new', 'returning', 'experienced'].includes(value.profile.experience) || !['strength', 'size', 'confidence'].includes(value.profile.goal))) || (value.draft !== null && !validDraft(value.draft)) || !Array.isArray(value.history) || !value.history.every(entry => validDraft(entry) && draftComplete(entry) && typeof entry.completedAt === 'string' && Number.isFinite(Date.parse(entry.completedAt)))) throw new Error('Saved training data could not be read.');
   if (new Set(value.history.map(entry => entry.id)).size !== value.history.length || (value.draft && (value.history.some(entry => entry.id === value.draft!.id) || JSON.stringify(value.draft.training) !== JSON.stringify(value.training)))) throw new Error('Saved workout state is inconsistent.');
   return value;
 }
