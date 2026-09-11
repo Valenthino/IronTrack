@@ -6,10 +6,12 @@ import { draftComplete, finishWorkout, liftNames, remainingSeconds, setReps, sta
 import { workoutName, barWeight, calculatePlates, restSeconds, warmupSets, workoutDefinition, type Lift, type Workout } from '../src/training/engine';
 import { theme } from '../src/theme';
 import { Button, Loading, Message, Screen, s } from '../src/ui/common';
+import { ExerciseGuideModal } from '../src/ui/ExerciseGuideModal';
 
 export default function Today() {
   const router = useRouter();
   const { data, ready, saving, error: storageError, update } = useTraining();
+  const [guideLift, setGuideLift] = useState<Lift | null>(null);
   const [preview, setPreview] = useState<Workout | null>(null);
   const [selected, setSelected] = useState<{ lift: Lift; index: number } | null>(null);
   const [now, setNow] = useState(Date.now());
@@ -53,7 +55,7 @@ export default function Today() {
       const weight = training.lifts[lift].weight;
       const warmups = warmupSets(weight, training.unit, training.customBarWeight ?? barWeight(training.unit), training.microloading);
       const { plates, remainder } = calculatePlates(weight, training.unit, training.customBarWeight ?? barWeight(training.unit), training.microloading);
-      return <View key={lift} style={s.card}><Text style={s.eyebrow}>0{index + 1} / {sets} × {reps}</Text><View style={s.row}><Text accessibilityRole="header" style={s.heading}>{liftNames[lift]}</Text><Text style={s.heading}>{weight} {training.unit}</Text></View>
+      return <View key={lift} style={s.card}><Text style={s.eyebrow}>0{index + 1} / {sets} × {reps}</Text><View style={s.row}><Pressable accessibilityRole="button" accessibilityLabel={`Open ${liftNames[lift]} exercise guide`} onPress={() => setGuideLift(lift)} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={s.heading}>{liftNames[lift]}</Text><Text style={s.muted}>Form guide ↗</Text></Pressable><Text style={s.heading}>{weight} {training.unit}</Text></View>
         <Text style={s.muted}>Plates per side: {plates.length ? plates.map(plate => `${plate.count} × ${plate.weight} ${training.unit}`).join(' + ') : 'None — empty bar.'}</Text>
         {remainder !== 0 && <Text style={s.muted}>{remainder < 0 ? `Bar exceeds target by ${-remainder} ${training.unit}; use lighter equipment.` : `Unloaded remainder: ${remainder} ${training.unit}.`}</Text>}
         <Text style={s.muted}>Warm-up: {warmups.length ? warmups.map(set => `${set.weight} ${training.unit} × ${set.reps}`).join(' · ') : 'At or below bar weight; no separate warm-up sets.'}</Text>
@@ -66,5 +68,6 @@ export default function Today() {
     })}
     {!!(error || storageError) && <Message>{error || storageError}</Message>}
     {!draft ? <Button title={`Start workout ${workoutName(training)}`} disabled={saving} onPress={async () => { const success = await act(current => ({ ...current, draft: startDraft(current.training, `${Date.now()}-${Math.random().toString(36).slice(2)}`) })); if (success) { setSaved(false); setPreview(null); } }} /> : <><Text style={s.muted}>Tap each set box and choose your reps. Log every working set to finish; missed reps keep the lift at its current weight, with a deload after three stalls.</Text><Button title={saving ? 'Saving…' : 'Finish & save workout'} disabled={saving || !draftComplete(draft)} onPress={async () => { if (await act(current => finishWorkout(current, new Date().toISOString()))) { setSaved(true); setPreview(null); setSelected(null); } }} /><Text style={s.muted}>Your sets are saved as you go. You can leave and resume this workout.</Text></>}
+    <ExerciseGuideModal lift={guideLift} onClose={() => setGuideLift(null)} />
   </Screen>;
 }

@@ -8,6 +8,7 @@ import { barWeight, type Lift, type Unit } from '../src/training/engine';
 import { Button, Field, Loading, Message, s } from '../src/ui/common';
 import { LiftIllustration } from '../src/ui/LiftIllustration';
 import { theme } from '../src/theme';
+import { ExerciseGuideModal } from '../src/ui/ExerciseGuideModal';
 
 const experiences = [ ['new', 'New to lifting', 'Build a strong foundation, one rep at a time.'], ['returning', 'Getting back into it', 'Find your rhythm and rebuild your strength.'], ['experienced', 'Already lifting', 'Bring your experience. Make progress visible.'] ] as const;
 const goals = [ ['strength', 'Get stronger', 'Build strength with steady, measurable progress.'], ['size', 'Build muscle', 'Show up consistently and make every rep count.'], ['confidence', 'Feel confident', 'Get comfortable with the bar and your routine.'] ] as const;
@@ -22,6 +23,7 @@ function Choice({ title, detail, selected, onPress }: { title: string; detail?: 
 export default function Onboarding() {
   const { data, ready, saving, error: storageError, update } = useTraining();
   const router = useRouter();
+  const [guideLift, setGuideLift] = useState<Lift | null>(null);
   const [step, setStep] = useState(0);
   const [experience, setExperience] = useState<Profile['experience']>('new');
   const [goal, setGoal] = useState<Profile['goal']>('strength');
@@ -75,14 +77,14 @@ export default function Onboarding() {
         {daysPerWeek === 4 && <Text style={s.muted}>Four days includes consecutive training days. Adjust your week when you need more recovery.</Text>}
       </>}
       {step === 3 && <><Text style={s.muted}>Total weight, including the bar. Leave any field blank for an empty {barWeight(unit)} {unit} bar. Hints are a starting guide; they never change your weights.</Text>{lifts.map(lift => <View key={lift} style={s.card}>
-        <View style={styles.columns}><LiftIllustration lift={lift} /><View style={{ flex: 1, gap: 6 }}><Text style={s.heading}>{liftNames[lift]}</Text><Text style={styles.pill}>{lift === 'deadlift' ? '1 × 5' : '5 × 5'} · {unit.toUpperCase()}</Text></View></View>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Open ${liftNames[lift]} exercise guide`} onPress={() => setGuideLift(lift)} style={styles.columns}><LiftIllustration lift={lift} /><View style={{ flex: 1, gap: 6 }}><Text style={s.heading}>{liftNames[lift]}</Text><Text style={styles.pill}>{lift === 'deadlift' ? '1 × 5' : '5 × 5'} · {unit.toUpperCase()}</Text><Text style={s.muted}>Form guide ↗</Text></View></Pressable>
         <Text style={s.muted}>{startingWeightHint(experience, goal, lift)}</Text>
         <Field label={`${liftNames[lift]} starting weight (${unit})`} keyboardType="decimal-pad" value={values[lift] ?? ''} placeholder={String(barWeight(unit))} onChangeText={value => { setWeights(current => ({ ...current, [unit]: { ...current[unit], [lift]: value } })); setErrors(current => ({ ...current, [lift]: undefined })); }} onBlur={() => { try { setupTraining(unit, { [lift]: values[lift] }); } catch { setErrors(current => ({ ...current, [lift]: `Enter a finite weight of 0 ${unit} or more.` })); } }} />
         {errors[lift] && <Message>{errors[lift]}</Message>}
       </View>)}</>}
       {step === 4 && <>
         <View style={[s.card, styles.selected]}><Text style={s.eyebrow}>BUILT AROUND YOU</Text><Text style={s.heading}>{goals.find(([key]) => key === goal)![1]}</Text><Text style={s.text}>{experiences.find(([key]) => key === experience)![1]}</Text><Text style={s.text}>{daysPerWeek} days / week · {trainingDays.map(day => weekdays[day]).join(' · ')}</Text><Text style={s.muted}>Rest: {weekdays.filter((_, day) => !trainingDays.includes(day)).join(' · ')}</Text></View>
-        <View style={s.card}><Text style={s.heading}>Your starting weights</Text>{lifts.map(lift => <View key={lift} style={s.row}><Text style={s.text}>{liftNames[lift]}</Text><Text style={styles.choiceTitle}>{values[lift]?.trim() ? Number(values[lift]) : barWeight(unit)} {unit}</Text></View>)}</View>
+        <View style={s.card}><Text style={s.heading}>Your starting weights</Text>{lifts.map(lift => <View key={lift} style={s.row}><Pressable accessibilityRole="button" accessibilityLabel={`Open ${liftNames[lift]} exercise guide`} onPress={() => setGuideLift(lift)} style={{ minHeight: 48, justifyContent: 'center' }}><Text style={s.text}>{liftNames[lift]}</Text><Text style={s.muted}>Form guide ↗</Text></Pressable><Text style={styles.choiceTitle}>{values[lift]?.trim() ? Number(values[lift]) : barWeight(unit)} {unit}</Text></View>)}</View>
         <Text style={s.muted}>Start with workout A: squat, bench press and barbell row. Your plan saves on this device. No account needed.</Text>
       </>}
       {!!error && <Message>{error}</Message>}
@@ -90,7 +92,7 @@ export default function Onboarding() {
       {step > 0 && <Button title="← Back" secondary disabled={saving} onPress={() => { setStep(current => current - 1); setError(''); }} />}
       <Text style={s.footer}>SHOW UP. GET STRONGER.</Text>
     </>}
-  </View></ScrollView></SafeAreaView>;
+  </View></ScrollView><ExerciseGuideModal lift={guideLift} onClose={() => setGuideLift(null)} /></SafeAreaView>;
 }
 const styles = StyleSheet.create({
   choice: { minHeight: 56, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface, flexDirection: 'row', alignItems: 'center', gap: 12 },
