@@ -1,11 +1,12 @@
+import { validBodyweight, validReminder, type Bodyweight, type Reminder } from './progress';
 import { barWeight, presetProgram, validProgram, type Program, completeSession, createTrainingState, increment, workoutDefinition, type Lift, type TrainingState, type Unit } from './engine';
 
 export const liftNames: Record<Lift, string> = { squat: 'Squat', bench_press: 'Bench press', barbell_row: 'Barbell row', overhead_press: 'Overhead press', deadlift: 'Deadlift' };
 export const lifts = Object.keys(liftNames) as Lift[];
 export type Profile = { experience: 'new' | 'returning' | 'experienced'; goal: 'strength' | 'size' | 'confidence'; schedule?: { daysPerWeek: 2 | 3 | 4; trainingDays: number[] } };
-export type Draft = { id: string; restDeadline?: number | null; training: TrainingState; reps: Partial<Record<Lift, (number | null)[]>> };
-export type Entry = { id: string; completedAt: string; training: TrainingState; reps: Draft['reps'] };
-export type AppData = { version: 3; profile: Profile | null; training: TrainingState; draft: Draft | null; history: Entry[] };
+export type Draft = { notes?: string; id: string; restDeadline?: number | null; training: TrainingState; reps: Partial<Record<Lift, (number | null)[]>> };
+export type Entry = { notes?: string; id: string; completedAt: string; training: TrainingState; reps: Draft['reps'] };
+export type AppData = { version: 3; profile: Profile | null; training: TrainingState; draft: Draft | null; history: Entry[]; bodyweight?: Bodyweight[]; reminder?: Reminder };
 export const initialData = (): AppData => ({ version: 3, profile: null, training: createTrainingState('lb'), draft: null, history: [] });
 export function setupTraining(unit: Unit, values: Partial<Record<Lift, string>>, daysPerWeek = 3): TrainingState {
   const state = createTrainingState(unit);
@@ -79,9 +80,10 @@ export function restoreData(raw: string): AppData {
     const item = state.lifts?.[lift];
     return item && Number.isFinite(item.weight) && item.weight >= 0 && Number.isInteger(item.stalls) && item.stalls >= 0 && item.stalls <= 2;
   });
-  const validDraft = (draft: Draft) => draft && typeof draft.id === 'string' && (draft.restDeadline == null || (Number.isFinite(draft.restDeadline) && draft.restDeadline >= 0)) && validTraining(draft.training) && workoutDefinition(draft.training.nextWorkout, draft.training.program).every(({ lift, sets }) => Array.isArray(draft.reps?.[lift]) && draft.reps[lift]!.length === sets && draft.reps[lift]!.every(r => r === null || (Number.isInteger(r) && r >= 0 && r <= 5)));
+  const validDraft = (draft: Draft) => draft && typeof draft.id === 'string' && (draft.notes === undefined || (typeof draft.notes === 'string' && draft.notes.length <= 2000)) && (draft.restDeadline == null || (Number.isFinite(draft.restDeadline) && draft.restDeadline >= 0)) && validTraining(draft.training) && workoutDefinition(draft.training.nextWorkout, draft.training.program).every(({ lift, sets }) => Array.isArray(draft.reps?.[lift]) && draft.reps[lift]!.length === sets && draft.reps[lift]!.every(r => r === null || (Number.isInteger(r) && r >= 0 && r <= 5)));
   if (value?.version !== 3 || !validTraining(value.training) || (value.profile !== null && (!value.profile || !['new', 'returning', 'experienced'].includes(value.profile.experience) || !['strength', 'size', 'confidence'].includes(value.profile.goal) || (value.profile.schedule !== undefined && !validSchedule(value.profile.schedule)))) || (value.draft !== null && !validDraft(value.draft)) || !Array.isArray(value.history) || !value.history.every(entry => validDraft(entry) && draftComplete(entry) && typeof entry.completedAt === 'string' && Number.isFinite(Date.parse(entry.completedAt)))) throw new Error('Saved training data could not be read.');
   if (new Set(value.history.map(entry => entry.id)).size !== value.history.length || (value.draft && (value.history.some(entry => entry.id === value.draft!.id) || JSON.stringify(value.draft.training) !== JSON.stringify(value.training)))) throw new Error('Saved workout state is inconsistent.');
+  if ((value.bodyweight !== undefined && (!Array.isArray(value.bodyweight) || !value.bodyweight.every(validBodyweight) || new Set(value.bodyweight.map(item => item.date)).size !== value.bodyweight.length)) || (value.reminder !== undefined && !validReminder(value.reminder))) throw new Error('Saved progress settings could not be read.');
   return value;
 }
 

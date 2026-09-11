@@ -1,3 +1,4 @@
+import { SessionNotes } from '../src/ui/SessionNotes';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { AppState, Pressable, Text, View } from 'react-native';
@@ -66,6 +67,7 @@ export default function Today() {
         {selected?.lift === lift && draft && <View style={{ gap: 12 }}><Text style={s.text}>{liftNames[lift]} · set {selected.index + 1}: reps completed</Text><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{[0, 1, 2, 3, 4, 5].map(count => <Button key={count} title={`${count} reps`} disabled={saving} secondary={count !== 5} onPress={() => log(count)} />)}</View><Text style={s.muted}>0 means attempted with no completed reps. Fewer than 5 starts a 3-minute rest.</Text><Button title="Clear this set" secondary disabled={saving} onPress={() => log(null)} /><Button title="Close set editor" secondary onPress={() => setSelected(null)} /></View>}
       </View>;
     })}
+    {draft && <View style={s.card}><SessionNotes key={draft.id} id={draft.id} initial={draft.notes} /></View>}
     {!!(error || storageError) && <Message>{error || storageError}</Message>}
     {!draft ? <Button title={`Start workout ${workoutName(training)}`} disabled={saving} onPress={async () => { const success = await act(current => ({ ...current, draft: startDraft(current.training, `${Date.now()}-${Math.random().toString(36).slice(2)}`) })); if (success) { setSaved(false); setPreview(null); } }} /> : <><Text style={s.muted}>Tap each set box and choose your reps. Log every working set to finish; missed reps keep the lift at its current weight, with a deload after three stalls.</Text><Button title={saving ? 'Saving…' : 'Finish & save workout'} disabled={saving || !draftComplete(draft)} onPress={async () => { if (await act(current => finishWorkout(current, new Date().toISOString()))) { setSaved(true); setPreview(null); setSelected(null); } }} /><Text style={s.muted}>Your sets are saved as you go. You can leave and resume this workout.</Text></>}
     <ExerciseGuideModal lift={guideLift} onClose={() => setGuideLift(null)} />

@@ -1,3 +1,4 @@
+import { ReminderSettings } from '../src/ui/Reminders';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Text, View } from 'react-native';
@@ -26,6 +27,7 @@ export default function Settings() {
         <Button title="Save bar weight" disabled={saving || !!data.draft} onPress={() => saveEquipment(data.training.microloading, bar.trim() === '' ? null : Number(bar))} />
         {!!data.draft && <Text style={s.muted}>Finish your active workout to change equipment.</Text>}
       </View>
+      <ReminderSettings />
       {data.profile && <View style={s.card}><Text style={s.heading}>Your plan</Text><Text style={s.text}>Experience: {data.profile.experience}</Text><Text style={s.text}>Goal: {data.profile.goal}</Text><Text style={s.muted}>{data.training.program.name} · {data.training.program.daysPerWeek} days/week · Deadlift 1 × 5</Text><Button title="Edit plan / program" secondary onPress={() => router.push('/program')} /></View>}
       {!!error && <Message>{error}</Message>}
     </>}

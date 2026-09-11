@@ -59,7 +59,7 @@ The rest timer starts at 2 minutes for a five-rep set and 3 minutes for fewer re
 
 Setup, active sets, timer deadline, and history are stored using AsyncStorage under `irontrack.training.v1`. AppData version 2 retains this storage key and migrates version 1 on read, preserving lift weights, stalls, profile, history, active reps, and timer deadlines. Migrated snapshots default to microloading off and the standard bar; the next successful write persists version 2. Writes finish before UI state advances, and duplicate completion is guarded. Failed storage reads leave existing data untouched and block writes; reload to retry. This MVP assumes one active app tab. Training is device-local and shared by people using the same browser/device, even when signed in. Signing out preserves local training; clearing browser/app storage removes it. Cloud workout sync is not implemented.
 
-Settings converts current targets to the nearest loadable weight in the selected unit while retaining stalls; repeated conversions can round weights. Unit and equipment changes are disabled during active workouts. Custom bar weights convert with units; changing equipment leaves current lift targets and history intact. Historical weights retain their original units. No reminders, bodyweight, notes, or advanced analytics are included.
+Settings converts current targets to the nearest loadable weight in the selected unit while retaining stalls; repeated conversions can round weights. Unit and equipment changes are disabled during active workouts. Custom bar weights convert with units; changing equipment leaves current lift targets and history intact. Historical weights retain their original units. Approved R5 adds local reminders, bodyweight logs, session notes, and history-derived progress (see below).
 
 Setup follows the official [Expo Router installation guide](https://docs.expo.dev/router/installation/) and [Supabase React Native guide](https://supabase.com/docs/guides/auth/quickstarts/react-native).
 
@@ -128,3 +128,23 @@ The pure engine resolves ordered days from the program, wraps after its final da
 AppData version 3 migrates v1/v2 current training, active drafts and history to Classic A/B, keeping the existing local storage key and preserving the next A/B day, weights, stalls, equipment, logged reps and rest deadline. Existing schedule frequency is retained; otherwise frequency defaults to three. No sync, backend, deployment, or R4–R6 work is included.
 
 R3 verification: `npm test` (44 tests), `npm run typecheck`, and `EXPO_NO_DOTENV=1 npm run build:web`.
+
+
+## Approved round R5 — progress and consistency
+
+History now includes lightweight native View line graphs for all five lifts, all-time PR badges, and stall/deload outcomes derived from the saved session snapshot. Graphs show working weights (including failed attempts), sorted by completion time and converted to the current display unit. A PR is the heaviest working weight with at least one completed rep; zero-rep attempts do not qualify. Tied all-time records receive badges. This is not an estimated 1RM.
+
+The Monday-first month calendar marks workouts and bodyweight logs. Tap a date to filter sessions, then tap a session to edit its notes. Multiple sessions on the same date remain available. The grid scrolls horizontally on narrow phones to retain 48px day targets. Notes can also be saved during an active workout, survive reloads and completion, and are limited to 2,000 characters. Save notes before leaving or finishing.
+
+The streak counts consecutive Monday–Sunday weeks meeting the **current program’s weekly target on distinct training days**. Rest days and the unfinished current week do not break it; a completed week below target does. Changing the weekly target recalculates the streak. Multiple workouts on one day count as one training day.
+
+Optional bodyweight logs accept a positive weight and local date, one entry per date; saving again replaces that date’s entry. Logs retain their entered units, appear on the progress graph, and are marked in the calendar.
+
+Settings has opt-in reminder weekdays (Monday-first) and a 24-hour local time. The in-app banner appears at/after that time until dismissed for the day or a workout is active/completed that day. Browser Notification permission is requested only via the explicit button; unsupported or denied notifications leave the banner usable. Browser delivery is best-effort while the app is open, once per day per tab session. **Closed-app/background scheduled delivery is not supported.** No email, SMS, push server, sync, or new dependencies.
+
+R5 retains AppData version 3 and the existing storage key. New optional notes/bodyweight/reminder fields are validated on restore; older v1/v2 migrations and existing v3 saves remain supported. All training and R5 metadata stay device-local regardless of sign-in. No deployment or infrastructure changes are part of this round.
+
+Verification: `npm test` (61 pure-model tests), `npm run typecheck`, and `EXPO_NO_DOTENV=1 npm run build:web -- --clear`. R5 model coverage includes mixed-unit PRs, zero-rep attempts, stall snapshots, notes through completion, bodyweight replacement/validation, leap calendars, year/week boundaries, rest-day grace, reminder timing/suppression, and corrupt local-data rejection.
+
+
+Local mobile smoke: serve the R5 export on `127.0.0.1:8087`, start Chromium with a disposable profile and `--remote-debugging-port=9337`, then run `node scripts/smoke-r5.mjs` after `npm test`. It clears only that local origin’s training storage and verifies PR/stall rendering, calendar filtering, bodyweight, notes/reload, reminder banner/dismissal and settings/reload, 320px overflow, and 48px controls. All pass without runtime exceptions. Native device behavior and actual browser notification delivery are not verified; permission and delivery remain browser-dependent.

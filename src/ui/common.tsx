@@ -1,3 +1,4 @@
+import { ReminderBanner } from './Reminders';
 import { type ReactNode } from 'react';
 import { Link, usePathname } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
@@ -14,6 +15,7 @@ export function Screen({ title, eyebrow, children }: { title: string; eyebrow?: 
   return <SafeAreaView style={s.safe}><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={s.scroll}><View style={s.container}>
     <View style={s.row}><Text style={s.brand}>IRON<Text style={{ color: theme.colors.red }}>TRACK</Text></Text><Text style={s.badge}>5 × 5</Text></View>
     <View style={s.nav}>{([{ href: '/', label: 'Today' }, { href: '/history', label: 'History' }, { href: '/settings', label: 'Settings' }] as const).map(item => <Link key={item.href} href={item.href} asChild><Pressable accessibilityRole="link" accessibilityState={{ selected: pathname === item.href }} style={StyleSheet.flatten([s.navItem, pathname === item.href && s.navActive])}><Text style={s.buttonText}>{item.label}</Text></Pressable></Link>)}</View>
+    <ReminderBanner />
     {eyebrow && <Text style={s.eyebrow}>{eyebrow}</Text>}<Text accessibilityRole="header" style={s.title}>{title}</Text>{children}
     <Text style={s.footer}>SHOW UP. GET STRONGER.</Text>
   </View></ScrollView></SafeAreaView>;
