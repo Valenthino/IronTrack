@@ -42,7 +42,7 @@ The production static web export is written to `dist/`; preview serves it locall
 
 - `app/_layout.tsx`: Router stack, safe areas, and status bar.
 - `app/index.tsx`: today’s workout, A/B previews, per-set logging, warm-ups, completion, and rest timer.
-- `app/onboarding.tsx`: experience, goal, units, and starting weights.
+- `app/onboarding.tsx`: five-step experience, goal, schedule/units, starting weights, and review wizard.
 - `app/auth.tsx`: optional email + password sign-in and sign-up.
 - `app/history.tsx`, `app/settings.tsx`: history, current targets, units, and account navigation.
 - `src/state/store.tsx`: versioned local persistence with guarded writes.
@@ -109,3 +109,9 @@ Visual consistency, accessibility, and state clarity pass. No new features were 
 - **Test gap closed.** Added engine coverage asserting invalid units and workouts are rejected consistently across `increment`, `barWeight`, `createTrainingState`, `calculatePlates`, and `workoutDefinition`.
 
 Verification: `npm test` (24 passing), `npm run typecheck`, and `EXPO_NO_DOTENV=1 npm run build:web` all pass. See the commit message for the deployed hash.
+
+## Approved visual round R2
+
+Onboarding uses five steps with red selection cards, progress, back navigation, inline validation, and native geometric lift illustrations. Schedule preferences (2/3/4 days and a training/rest pattern) are stored as optional profile data, so existing v1/v2 saves remain compatible. They do not change workout sequencing or add reminders. Experience and goal personalize advisory hints; blank weights still use the nominal empty bar. Explicit weights are retained separately for lb and kg while navigating the wizard. Done saves through the existing guarded local store. Auth and backend behavior are unchanged.
+
+Focused verification: `npm test`, `npm run typecheck`, and `EXPO_NO_DOTENV=1 npm run build:web`. With the export served on port 8084 and a disposable Chromium profile exposing CDP on port 9334, run `node scripts/smoke-onboarding.mjs` for the five-step mobile flow, validation, unit/back retention, review, save/reload, 320px overflow and 48px target checks. This browser check clears only the test origin's local storage.

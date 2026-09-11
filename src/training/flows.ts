@@ -2,7 +2,7 @@ import { barWeight, completeSession, createTrainingState, increment, workoutDefi
 
 export const liftNames: Record<Lift, string> = { squat: 'Squat', bench_press: 'Bench press', barbell_row: 'Barbell row', overhead_press: 'Overhead press', deadlift: 'Deadlift' };
 export const lifts = Object.keys(liftNames) as Lift[];
-export type Profile = { experience: 'new' | 'returning' | 'experienced'; goal: 'strength' | 'size' | 'confidence' };
+export type Profile = { experience: 'new' | 'returning' | 'experienced'; goal: 'strength' | 'size' | 'confidence'; schedule?: { daysPerWeek: 2 | 3 | 4; trainingDays: number[] } };
 export type Draft = { id: string; restDeadline?: number | null; training: TrainingState; reps: Partial<Record<Lift, (number | null)[]>> };
 export type Entry = { id: string; completedAt: string; training: TrainingState; reps: Draft['reps'] };
 export type AppData = { version: 2; profile: Profile | null; training: TrainingState; draft: Draft | null; history: Entry[] };
@@ -70,7 +70,25 @@ export function restoreData(raw: string): AppData {
     return item && Number.isFinite(item.weight) && item.weight >= 0 && Number.isInteger(item.stalls) && item.stalls >= 0 && item.stalls <= 2;
   });
   const validDraft = (draft: Draft) => draft && typeof draft.id === 'string' && (draft.restDeadline == null || (Number.isFinite(draft.restDeadline) && draft.restDeadline >= 0)) && validTraining(draft.training) && workoutDefinition(draft.training.nextWorkout).every(({ lift, sets }) => Array.isArray(draft.reps?.[lift]) && draft.reps[lift]!.length === sets && draft.reps[lift]!.every(r => r === null || (Number.isInteger(r) && r >= 0 && r <= 5)));
-  if (value?.version !== 2 || !validTraining(value.training) || (value.profile !== null && (!value.profile || !['new', 'returning', 'experienced'].includes(value.profile.experience) || !['strength', 'size', 'confidence'].includes(value.profile.goal))) || (value.draft !== null && !validDraft(value.draft)) || !Array.isArray(value.history) || !value.history.every(entry => validDraft(entry) && draftComplete(entry) && typeof entry.completedAt === 'string' && Number.isFinite(Date.parse(entry.completedAt)))) throw new Error('Saved training data could not be read.');
+  if (value?.version !== 2 || !validTraining(value.training) || (value.profile !== null && (!value.profile || !['new', 'returning', 'experienced'].includes(value.profile.experience) || !['strength', 'size', 'confidence'].includes(value.profile.goal) || (value.profile.schedule !== undefined && !validSchedule(value.profile.schedule)))) || (value.draft !== null && !validDraft(value.draft)) || !Array.isArray(value.history) || !value.history.every(entry => validDraft(entry) && draftComplete(entry) && typeof entry.completedAt === 'string' && Number.isFinite(Date.parse(entry.completedAt)))) throw new Error('Saved training data could not be read.');
   if (new Set(value.history.map(entry => entry.id)).size !== value.history.length || (value.draft && (value.history.some(entry => entry.id === value.draft!.id) || JSON.stringify(value.draft.training) !== JSON.stringify(value.training)))) throw new Error('Saved workout state is inconsistent.');
   return value;
+}
+
+/** Monday = 0; optional for compatibility with existing local profiles. */
+export function validSchedule(schedule: NonNullable<Profile['schedule']>): boolean {
+  return !!schedule && [2, 3, 4].includes(schedule.daysPerWeek) && Array.isArray(schedule.trainingDays)
+    && schedule.trainingDays.length === schedule.daysPerWeek && new Set(schedule.trainingDays).size === schedule.daysPerWeek
+    && schedule.trainingDays.every(day => Number.isInteger(day) && day >= 0 && day <= 6);
+}
+export const schedulePatterns: Record<2 | 3 | 4, number[][]> = {
+  2: [[0, 3], [1, 4], [2, 5]],
+  3: [[0, 2, 4], [1, 3, 5], [0, 3, 5]],
+  4: [[0, 1, 3, 5], [1, 2, 4, 6], [0, 2, 4, 6]],
+};
+export function startingWeightHint(experience: Profile['experience'], goal: Profile['goal'], lift: Lift): string {
+  const experienceHint = { new: 'Start with the empty bar to learn the movement.', returning: 'Start below your previous working weight and rebuild gradually.', experienced: 'Choose a familiar load you can repeat with clean reps.' }[experience];
+  const goalHint = { strength: 'Leave room to add weight as you progress.', size: 'Prioritize a controlled range of motion on every rep.', confidence: 'Choose a load that feels manageable and repeatable.' }[goal];
+  const liftHint = { squat: 'Keep your whole foot planted.', bench_press: 'Keep the bar path steady.', barbell_row: 'Keep your torso stable.', overhead_press: 'Avoid leaning back to finish.', deadlift: 'Reset your position between reps.' }[lift];
+  return `${experienceHint} ${goalHint} ${liftHint}`;
 }
